@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>林野火災注意報・警報 判定ダッシュボード</title>
+<style>
+  /* ===== リセット・基本 ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:      #0f1117;
+    --panel:   #181c27;
+    --border:  #252a3a;
+    --accent:  #3d7fff;
+    --rain:    #38bdf8;
+    --kanso:   #f97316;
+    --kyofu:   #a78bfa;
+    --warn:    #ef4444;
+    --chui:    #f59e0b;
+    --text:    #e2e8f0;
+    --muted:   #64748b;
+    --sub:     #94a3b8;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'BIZ UDPGothic', 'Noto Sans JP', 'Meiryo', sans-serif;
+    min-height: 100vh;
+    padding: 28px 20px;
+  }
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+  /* ===== アニメーション ===== */
+  @keyframes fadeInUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes pulse    { 0%,100%{opacity:1} 50%{opacity:0.35} }
+  @keyframes barGrow  { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+  .fade-in  { animation: fadeInUp 0.5s ease both; }
+  .fade-in2 { animation: fadeInUp 0.5s ease 0.1s both; }
+  .fade-in3 { animation: fadeInUp 0.5s ease 0.2s both; }
+
+  /* ===== レイアウト ===== */
+  .container { max-width: 1120px; margin: 0 auto; }
+
+  /* ===== ヘッダー ===== */
+  .header {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    flex-wrap: wrap; gap: 14px; margin-bottom: 22px;
+  }
+  .header-label {
+    font-size: 11px; letter-spacing: .15em; color: var(--accent);
+    text-transform: uppercase; font-family: monospace; margin-bottom: 5px;
+  }
+  .header-title { font-size: 24px; font-weight: 900; letter-spacing: -.5px; }
+  .header-sub   { font-size: 12px; color: var(--muted); font-family: monospace; margin-top: 5px; }
+
+  /* ===== 更新ボタン ===== */
+  #refreshBtn {
+    background: var(--accent); border: none; color: #fff;
+    padding: 10px 22px; border-radius: 9px; cursor: pointer;
+    font-size: 13px; font-weight: 700; font-family: monospace;
+    letter-spacing: .04em; transition: background .2s, transform .1s;
+  }
+  #refreshBtn:hover  { background: #2563eb; }
+  #refreshBtn:active { transform: scale(.97); }
+  #refreshBtn:disabled { background:#252a3a; color:var(--muted); cursor:not-allowed; }
+
+  /* ===== 発令条件バナー ===== */
+  .condition-bar {
+    background: #12161f; border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 18px; margin-bottom: 22px;
+    font-size: 12px; font-family: monospace;
+    display: flex; flex-wrap: wrap; gap: 18px;
+  }
+  .cond-warn  { color: var(--warn);  font-weight: 700; }
+  .cond-chui  { color: var(--chui); font-weight: 700; }
+  .cond-muted { color: var(--muted); }
+
+  /* ===== カードグリッド ===== */
+  .cards { display: flex; gap: 20px; flex-wrap: wrap; }
+
+  /* ===== 地域カード ===== */
+  .area-card {
+    flex: 1; min-width: 300px;
+    background: var(--panel); border: 1.5px solid var(--border);
+    border-radius: 14px; padding: 24px;
+    transition: box-shadow .3s;
+  }
+  .area-card.verdict-warn { border-color: var(--warn); box-shadow: 0 0 28px #ef444440; }
+  .area-card.verdict-chui { border-color: var(--chui); box-shadow: 0 0 20px #f59e0b30; }
+
+  /* カードヘッダー */
+  .card-head { display:flex; justify-content:space-between; align-items:flex-start; }
+  .card-area-label { font-size:11px; color:var(--muted); font-family:monospace; margin-bottom:4px; }
+  .card-area-name  { font-size:22px; font-weight:900; letter-spacing:-.5px; }
+  .verdict-badge {
+    padding: 7px 16px; border-radius: 8px; font-size:14px; font-weight:800;
+    letter-spacing:.5px; border: 1.5px solid;
+  }
+  .verdict-badge.warn { background:#7f1d1d; color:#fca5a5; border-color:var(--warn); }
+  .verdict-badge.chui { background:#78350f; color:#fde68a; border-color:var(--chui); }
+  .verdict-badge.none { background:#1e2533; color:var(--muted); border-color:#334155; }
+
+  /* ===== サマリーボックス群 ===== */
+  .stat-row { display:flex; gap:10px; margin-top:18px; }
+  .stat-box {
+    flex:1; background:#1a1f2e; border:1px solid var(--border);
+    border-radius:8px; padding:8px 6px; text-align:center;
+    transition: border-color .3s, background .3s;
+  }
+  .stat-box.alert-rain  { background:#0c2d4a; border-color:#0ea5e960; }
+  .stat-box.alert-kanso { background:#3a1800; border-color:#f9731660; }
+  .stat-box.alert-kyofu { background:#1e1040; border-color:#a78bfa60; }
+  .stat-label { font-size:10px; color:var(--muted); margin-bottom:4px; line-height:1.3; }
+  .stat-value { font-size:13px; font-weight:700; font-family:monospace; color:var(--muted); }
+  .stat-value.rain-val  { color:var(--rain); }
+  .stat-value.kanso-val { color:var(--kanso); }
+  .stat-value.kyofu-val { color:var(--kyofu); }
+
+  /* ===== バーチャート ===== */
+  .chart-label { font-size:11px; color:var(--muted); font-family:monospace; margin:14px 0 6px; }
+  .chart-wrap  { display:flex; align-items:flex-end; gap:2px; height:80px; }
+  .bar-col     { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .bar {
+    width:100%; border-radius:2px 2px 0 0;
+    transform-origin: bottom;
+    animation: barGrow .5s ease both;
+  }
+  .bar:hover { filter: brightness(1.4); cursor: default; }
+  .chart-axis { display:flex; justify-content:space-between; margin-top:3px; }
+  .axis-label { font-size:10px; color:var(--muted); font-family:monospace; }
+
+  /* ===== トグルボタン ===== */
+  .toggle-btn {
+    width:100%; margin-top:14px; background:none;
+    border:1px solid var(--border); color:var(--muted);
+    padding:6px 14px; border-radius:7px; cursor:pointer;
+    font-size:12px; font-family:monospace;
+    transition: background .2s;
+  }
+  .toggle-btn:hover { background:#1e2533; }
+
+  /* ===== 詳細テーブル ===== */
+  .detail-wrap { margin-top:12px; overflow-x:auto; }
+  .detail-table { width:100%; border-collapse:collapse; font-size:12px; font-family:monospace; }
+  .detail-table th {
+    padding:6px 10px; text-align:center; color:var(--muted); font-weight:600;
+    background:#1e2533; border-bottom:1px solid var(--border); white-space:nowrap;
+  }
+  .detail-table td {
+    padding:5px 10px; text-align:center;
+    border-bottom:1px solid #252a3a20;
+  }
+  .detail-table tr:nth-child(even) td { background:#12161f; }
+  .td-rain-val  { color:var(--rain); font-weight:700; }
+  .td-rain-zero { color:var(--muted); }
+  .badge-kanso  { background:#431407; color:var(--kanso); padding:2px 8px; border-radius:4px; font-size:11px; }
+  .badge-kyofu  { background:#2e1065; color:var(--kyofu); padding:2px 8px; border-radius:4px; font-size:11px; }
+  .badge-none   { color:var(--border); }
+  .show-all-btn {
+    width:100%; margin-top:8px; background:none;
+    border:1px solid var(--border); color:var(--muted);
+    padding:4px 14px; border-radius:6px; cursor:pointer;
+    font-size:11px; font-family:monospace;
+  }
+  .show-all-btn:hover { background:#1e2533; }
+
+  /* ===== 現在発令中バッジ ===== */
+  .warn-list { margin-top:14px; background:#1a1f2e; border-radius:8px; padding:10px 14px; }
+  .warn-list-label { font-size:11px; color:var(--muted); margin-bottom:6px; }
+  .warn-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .warn-tag {
+    background:#252a3a; color:var(--text);
+    padding:3px 10px; border-radius:5px; font-size:12px; font-family:monospace;
+  }
+
+  /* ===== ローディング ===== */
+  .loading-bars { display:flex; align-items:flex-end; gap:2px; height:80px; margin-top:16px; }
+  .loading-bar  { flex:1; background:#252a3a; border-radius:2px 2px 0 0; animation:pulse 1.5s infinite; }
+  .loading-text { color:var(--muted); font-size:13px; font-family:monospace; margin-top:8px; animation:pulse 1.5s infinite; }
+
+  /* ===== エラー ===== */
+  .error-msg { color:#f87171; font-size:12px; margin-top:12px; font-family:monospace; }
+
+  /* ===== 凡例 ===== */
+  .legend {
+    margin-top:22px; padding:12px 18px;
+    background:#12161f; border:1px solid var(--border); border-radius:10px;
+    font-size:11px; color:var(--muted); font-family:monospace;
+    display:flex; flex-wrap:wrap; gap:18px;
+  }
+  .legend span.rain-c { color:var(--rain); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- ヘッダー -->
+  <div class="header fade-in">
+    <div>
+      <div class="header-label">Forest Fire Advisory System</div>
+      <div class="header-title">林野火災注意報・警報 判定ダッシュボード</div>
+      <div class="header-sub" id="headerSub">判定基準日: — &nbsp;|&nbsp; 最終更新: —</div>
+    </div>
+    <button id="refreshBtn" onclick="loadAll()">🔄 最新情報に更新</button>
+  </div>
+
+  <!-- 発令条件 -->
+  <div class="condition-bar fade-in2">
+    <span><span class="cond-chui">【注意報】</span><span class="cond-muted">　①前3日≦1mm かつ 前30日≦30mm　／　②前3日≦1mm かつ 乾燥注意報発表中</span></span>
+    <span><span class="cond-warn">【警　報】</span><span class="cond-muted">　注意報条件 ＋ 強風注意報発表中</span></span>
+  </div>
+
+  <!-- カード -->
+  <div class="cards fade-in3" id="cardsArea"></div>
+
+  <!-- 凡例 -->
+  <div class="legend fade-in3">
+    <span>📊 棒グラフ：日別降水量（高いほど多い）</span>
+    <span><span class="rain-c">■ 明るい青</span> = 直近3日間</span>
+    <span>データソース: 気象庁ETRN（降水量）/ 防災情報XML（警報・注意報）</span>
+    <span>※注意報履歴は現在発令中のもののみ表示</span>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// 設定
+// ============================================================
+const STATIONS = {
+  "大垣市": { prec_no:"52", block_no:"0496", area_code:"2120200" },
+  "池田町": { prec_no:"52", block_no:"1301", area_code:"2140400", note:"観測地点: 揖斐川町" },
+};
+
+// ============================================================
+// ユーティリティ
+// ============================================================
+function toDateStr(d) {
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getLast30Days() {
+  const arr = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i - 1); // 当日は含まない
+    arr.push({
+      year: d.getFullYear(), month: d.getMonth()+1, day: d.getDate(),
+      dateStr: toDateStr(d)
+    });
+  }
+  return arr;
+}
+
+function getRainColor(mm, isRecent) {
+  if (isRecent && mm > 0) return "linear-gradient(to top,#38bdf8,#7dd3fc)";
+  if (isRecent)           return "#0c2a3e";
+  if (!mm || mm === 0)    return "#1e2533";
+  if (mm < 1)  return "#0c4a6e";
+  if (mm < 5)  return "#0369a1";
+  if (mm < 15) return "#0284c7";
+  if (mm < 30) return "#0ea5e9";
+  return "#38bdf8";
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ============================================================
+// データ取得（気象庁ETRN）
+// ============================================================
+async function fetchRainFromJMA(prec_no, block_no, year, month) {
+  // ※ daily_a1.php（アメダス地点）を使用
+  const targetUrl = `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=${prec_no}&block_no=${block_no}&year=${year}&month=${month}&day=&view=`;
+  const proxyUrl  = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+
+  try {
+    const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
+    const json = await res.json();
+    const html = json.contents || "";
+    if (!html) { console.warn("空レスポンス:", targetUrl); return {}; }
+    return parseETRN(html, year, month);
+  } catch(e) {
+    console.warn("ETRN取得失敗:", e.message);
+    return {};
+  }
+}
+
+function parseETRN(html, year, month) {
+  const result = {};
+  try {
+    const parser = new DOMParser();
+    const doc    = parser.parseFromString(html, "text/html");
+    const tables = doc.querySelectorAll("table");
+    console.log("[parseETRN] " + year + "/" + month + " テーブル数: " + tables.length);
+
+    for (const table of tables) {
+      const rows = table.querySelectorAll("tr");
+      let count = 0;
+      for (const row of rows) {
+        const cells = row.querySelectorAll("td");
+        if (cells.length < 2) continue;
+        const dayText = cells[0].textContent.replace(/\s/g, "");
+        const day = parseInt(dayText, 10);
+        if (isNaN(day) || day < 1 || day > 31) continue;
+        // 2列目：降水量合計(mm) "0.0","12.0","--","×","///" など
+        const rawText = cells[1].textContent.replace(/\s/g, "");
+        const rainStr = rawText.replace(/[^0-9.]/g, "");
+        const rain = rainStr ? parseFloat(rainStr) : 0.0;
+        try {
+          const d = new Date(year, month - 1, day);
+          if (d.getMonth() !== month - 1) continue;
+          result[toDateStr(d)] = isNaN(rain) ? 0.0 : rain;
+          count++;
+        } catch (_) {}
+      }
+      if (count > 0) {
+        console.log("[parseETRN] " + year + "/" + month + ": " + count + "日分取得成功");
+        break;
+      }
+    }
+    if (Object.keys(result).length === 0) {
+      console.warn("[parseETRN] " + year + "/" + month + ": データ0件 HTMLサイズ=" + html.length);
+    }
+  } catch(e) {
+    console.warn("HTML解析エラー:", e.message);
+  }
+  return result;
+}
+
+// ============================================================
+// データ取得（気象庁 防災情報XML）
+// ============================================================
+async function fetchWarnings(area_name, area_code) {
+  const feedUrl = "https://www.data.jma.go.jp/developer/xml/feed/extra.xml";
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`;
+
+  try {
+    const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
+    const json = await res.json();
+    const feedXml = json.contents || "";
+
+    // 岐阜県の警報・注意報電文URLを探す
+    const gifu_urls = [];
+    const entryRe = /<entry[\s\S]*?<\/entry>/g;
+    let em;
+    while ((em = entryRe.exec(feedXml)) !== null) {
+      const block = em[0];
+      if (block.includes("岐阜") && block.includes("警報")) {
+        const hrefM = block.match(/href="([^"]+VPWW5[^"]+)"/);
+        if (hrefM) {
+          gifu_urls.push(hrefM[1]);
+          if (gifu_urls.length >= 2) break;
+        }
+      }
+    }
+
+    if (!gifu_urls.length) {
+      return { kanso:false, kyofu:false, kanso_time:null, kyofu_time:null, all:[] };
+    }
+
+    // 最新電文を解析
+    for (const xmlUrl of gifu_urls) {
+      const xProx = `https://api.allorigins.win/get?url=${encodeURIComponent(xmlUrl)}`;
+      const xRes  = await fetch(xProx, { signal: AbortSignal.timeout(20000) });
+      const xJson = await xRes.json();
+      const wXml  = xJson.contents || "";
+      const parsed = parseWarningXml(wXml, area_code);
+      if (parsed) return parsed;
+      await sleep(300);
+    }
+  } catch(e) {
+    console.warn("警報取得失敗:", e.message);
+  }
+  return { kanso:false, kyofu:false, kanso_time:null, kyofu_time:null, all:[] };
+}
+
+function parseWarningXml(xml, area_code) {
+  try {
+    const parser = new DOMParser();
+    const doc    = parser.parseFromString(xml, "text/xml");
+
+    let reportDt = "";
+    const rdEl = doc.querySelector("ReportDateTime");
+    if (rdEl) reportDt = rdEl.textContent;
+
+    const result = { kanso:false, kyofu:false, kanso_time:null, kyofu_time:null, all:[], report_dt: reportDt };
+
+    // すべての Item を検索
+    const items = doc.querySelectorAll("Item");
+    items.forEach(item => {
+      // このItemのAreaコードを確認
+      let hasArea = false;
+      item.querySelectorAll("Area").forEach(area => {
+        area.querySelectorAll("Code").forEach(code => {
+          if (code.textContent.trim() === area_code) hasArea = true;
+        });
+      });
+      if (!hasArea) return;
+
+      item.querySelectorAll("Kind").forEach(kind => {
+        const nameEl = kind.querySelector("Name");
+        if (!nameEl) return;
+        const name = nameEl.textContent.trim();
+        if (name) result.all.push(name);
+        if (name.includes("乾燥")) { result.kanso = true; result.kanso_time = reportDt; }
+        if (name.includes("強風") || name.includes("暴風")) { result.kyofu = true; result.kyofu_time = reportDt; }
+      });
+    });
+    return result;
+  } catch(e) {
+    return null;
+  }
+}
+
+// ============================================================
+// 判定
+// ============================================================
+function judge(rain3, rain30, kanso, kyofu) {
+  const c1 = rain3 <= 1.0 && rain30 <= 30.0;
+  const c2 = rain3 <= 1.0 && kanso;
+  if (!c1 && !c2) return "発令なし";
+  if (kyofu) return "警報";
+  return "注意報";
+}
+
+// ============================================================
+// DOM描画
+// ============================================================
+function renderLoadingCard(name, note="") {
+  const bars = Array.from({length:30}, (_,i) =>
+    `<div class="loading-bar" style="height:${20+Math.random()*55}%;animation-delay:${i*0.04}s"></div>`
+  ).join("");
+  return `
+  <div class="area-card" id="card-${name.replace(/\s/g,'')}">
+    <div class="card-head">
+      <div>
+        <div class="card-area-label">観測地点</div>
+        <div class="card-area-name">${name}</div>
+        ${note ? `<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px;">${note}</div>` : ""}
+      </div>
+    </div>
+    <div class="loading-text">データ取得中...</div>
+    <div class="loading-bars">${bars}</div>
+  </div>`;
+}
+
+function renderCard(name, days, rain3, rain30, warnings, verdict, note="") {
+  const vc = verdict === "警報" ? "warn" : verdict === "注意報" ? "chui" : "none";
+  const vLabel = verdict === "発令なし" ? "発令なし" : `林野火災${verdict}`;
+
+  // サマリーボックス
+  const r3Alert  = rain3  <= 1.0;
+  const r30Alert = rain30 <= 30.0;
+  const statBoxes = `
+    <div class="stat-box ${r3Alert?'alert-rain':''}">
+      <div class="stat-label">前3日合計</div>
+      <div class="stat-value ${r3Alert?'rain-val':''}">${rain3.toFixed(1)} mm</div>
+    </div>
+    <div class="stat-box ${r30Alert?'alert-rain':''}">
+      <div class="stat-label">前30日合計</div>
+      <div class="stat-value ${r30Alert?'rain-val':''}">${rain30.toFixed(1)} mm</div>
+    </div>
+    <div class="stat-box ${warnings.kanso?'alert-kanso':''}">
+      <div class="stat-label">乾燥注意報</div>
+      <div class="stat-value ${warnings.kanso?'kanso-val':''}">${warnings.kanso?'発表中':'なし'}</div>
+    </div>
+    <div class="stat-box ${warnings.kyofu?'alert-kyofu':''}">
+      <div class="stat-label">強風注意報</div>
+      <div class="stat-value ${warnings.kyofu?'kyofu-val':''}">${warnings.kyofu?'発表中':'なし'}</div>
+    </div>`;
+
+  // バーチャート
+  const maxRain = Math.max(...days.map(d=>d.rain||0), 5);
+  const bars = days.map((d,i) => {
+    const isRecent = i >= days.length - 3;
+    const h = maxRain > 0 ? ((d.rain||0)/maxRain*72) : 0;
+    const dispH = Math.max(h, (d.rain||0)>0 ? 3 : 1);
+    const bg    = getRainColor(d.rain, isRecent);
+    const opacity = (d.rain||0) === 0 ? 0.25 : 1;
+    return `<div class="bar-col"><div class="bar" style="height:${dispH}px;background:${bg};opacity:${opacity};animation-delay:${i*0.015}s" title="${d.dateStr}: ${d.rain??0}mm"></div></div>`;
+  }).join("");
+
+  // テーブル行（全日分）
+  const tableRows = [...days].reverse().map(d => {
+    const rainClass = (d.rain||0) > 0 ? 'td-rain-val' : 'td-rain-zero';
+    const kansoCell = warnings.kanso && d.dateStr === days[days.length-1].dateStr
+      ? `<span class="badge-kanso">発表中</span>` : `<span class="badge-none">―</span>`;
+    const kyofuCell = warnings.kyofu && d.dateStr === days[days.length-1].dateStr
+      ? `<span class="badge-kyofu">発表中</span>` : `<span class="badge-none">―</span>`;
+    return `<tr>
+      <td>${d.dateStr}</td>
+      <td class="${rainClass}">${(d.rain!==null&&d.rain!==undefined) ? d.rain.toFixed(1) : '-'}</td>
+      <td>${kansoCell}</td>
+      <td>${kyofuCell}</td>
+    </tr>`;
+  }).join("");
+
+  // 現在発令中の注意報リスト
+  const warnTags = warnings.all && warnings.all.length > 0
+    ? `<div class="warn-list">
+        <div class="warn-list-label">現在発表中の警報・注意報</div>
+        <div class="warn-tags">${warnings.all.map(w=>`<span class="warn-tag">${w}</span>`).join('')}</div>
+       </div>`
+    : '';
+
+  const nm = name.replace(/\s/g,'');
+  return `
+  <div class="area-card verdict-${vc}" id="card-${nm}">
+    <div class="card-head">
+      <div>
+        <div class="card-area-label">観測地点</div>
+        <div class="card-area-name">${name}</div>
+        ${note ? `<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px;">${note}</div>` : ""}
+      </div>
+      <div class="verdict-badge ${vc}">${vLabel}</div>
+    </div>
+    <div class="stat-row">${statBoxes}</div>
+    <div class="chart-label">前30日間の日別降水量　最大: ${maxRain.toFixed(1)}mm</div>
+    <div class="chart-wrap">${bars}</div>
+    <div class="chart-axis">
+      <span class="axis-label">${days[0]?.dateStr?.slice(5)}</span>
+      <span class="axis-label">${days[days.length-1]?.dateStr?.slice(5)}</span>
+    </div>
+    <button class="toggle-btn" onclick="toggleDetail('${nm}')">▼ 日別詳細テーブルを開く</button>
+    <div id="detail-${nm}" style="display:none">
+      <div class="detail-wrap">
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>日付</th><th>降水量(mm)</th><th>乾燥注意報</th><th>強風注意報</th>
+            </tr>
+          </thead>
+          <tbody id="tbody-${nm}">${tableRows}</tbody>
+        </table>
+      </div>
+    </div>
+    ${warnTags}
+  </div>`;
+}
+
+function toggleDetail(nm) {
+  const el  = document.getElementById(`detail-${nm}`);
+  const btn = el.previousElementSibling;
+  if (el.style.display === 'none') {
+    el.style.display = 'block';
+    btn.textContent = '▲ 日別詳細テーブルを閉じる';
+  } else {
+    el.style.display = 'none';
+    btn.textContent = '▼ 日別詳細テーブルを開く';
+  }
+}
+
+// ============================================================
+// メイン処理
+// ============================================================
+async function loadAll() {
+  const btn = document.getElementById('refreshBtn');
+  btn.disabled = true;
+  btn.textContent = '取得中...';
+
+  // ローディングカードを表示
+  const cardsArea = document.getElementById('cardsArea');
+  cardsArea.innerHTML = Object.entries(STATIONS).map(([n,c]) => renderLoadingCard(n, c.note||"")).join('');
+
+  // 今日の日付
+  const today = new Date();
+  document.getElementById('headerSub').textContent =
+    `判定基準日: ${toDateStr(today)}　|　最終更新: ${today.toLocaleTimeString('ja-JP')}`;
+
+  for (const [name, cfg] of Object.entries(STATIONS)) {
+    try {
+      const dates = getLast30Days();
+
+      // 月ごとに降水量取得
+      const months = [...new Set(dates.map(d=>`${d.year}-${d.month}`))].map(s=>{
+        const [y,m] = s.split('-').map(Number);
+        return {year:y, month:m};
+      });
+
+      const rainByDate = {};
+      for (const {year, month} of months) {
+        const data = await fetchRainFromJMA(cfg.prec_no, cfg.block_no, year, month);
+        Object.assign(rainByDate, data);
+        await sleep(400);
+      }
+
+      // 日別データ組み立て
+      const days = dates.map(d => ({
+        ...d, rain: rainByDate[d.dateStr] ?? 0
+      }));
+
+      const rain3  = days.slice(-3).reduce((s,d)=>s+(d.rain||0),0);
+      const rain30 = days.reduce((s,d)=>s+(d.rain||0),0);
+
+      // 警報・注意報取得
+      const warnings = await fetchWarnings(name, cfg.area_code);
+
+      const verdict = judge(
+        Math.round(rain3*10)/10,
+        Math.round(rain30*10)/10,
+        warnings.kanso, warnings.kyofu
+      );
+
+      // カード置き換え
+      const card = document.getElementById(`card-${name.replace(/\s/g,'')}`);
+      if (card) {
+        card.outerHTML = renderCard(
+          name, days,
+          Math.round(rain3*10)/10,
+          Math.round(rain30*10)/10,
+          warnings, verdict, cfg.note||""
+        );
+      }
+    } catch(e) {
+      const card = document.getElementById(`card-${name.replace(/\s/g,'')}`);
+      if (card) {
+        card.innerHTML += `<div class="error-msg">⚠ エラー: ${e.message}</div>`;
+      }
+    }
+    await sleep(500);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔄 最新情報に更新';
+}
+
+// ============================================================
+// 起動
+// ============================================================
+loadAll();
+</script>
+</body>
+</html>
