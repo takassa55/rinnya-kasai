@@ -597,6 +597,13 @@
       "池田町": { prec_no: "52", block_no: "1301", area_code: "2140400", note: "観測地点: 揖斐川町" },
     };
 
+    // プロキシをリスト化し、失敗時に自動フォールバック
+    const PROXIES = [
+      url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    ];
+
     // ============================================================
     // ユーティリティ
     // ============================================================
@@ -630,18 +637,53 @@
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
+    // タイムアウト付きfetch（AbortSignal.timeoutに非対応の環境でも動作）
+    function fetchWithTimeout(url, ms = 20000) {
+      const ctrl = new AbortController();
+      const id = setTimeout(() => ctrl.abort(), ms);
+      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
+    }
+
+    // プロキシ経由でURLを取得し、レスポンス文字列を返す。
+    // allorigins / corsproxy.io / codetabs の3種に対応したレスポンス抽出を行う。
+    // 全プロキシが失敗した場合は例外をスロー。
+    async function fetchViaProxy(targetUrl, timeoutMs = 20000) {
+      let lastErr = null;
+      for (let i = 0; i < PROXIES.length; i++) {
+        const proxyUrl = PROXIES[i](targetUrl);
+        try {
+          const res = await fetchWithTimeout(proxyUrl, timeoutMs);
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          // allorigins と codetabs は JSON でラップ、corsproxy.io は生テキスト
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const json = await res.json();
+            // allorigins: { contents: "..." }
+            // codetabs:   テキストをそのまま返す場合もある
+            const text = json.contents ?? json.body ?? JSON.stringify(json);
+            if (text && text.length > 100) return text;
+            throw new Error("空または短すぎるレスポンス");
+          } else {
+            const text = await res.text();
+            if (text && text.length > 100) return text;
+            throw new Error("空または短すぎるレスポンス");
+          }
+        } catch (e) {
+          console.warn(`[Proxy ${i}] 失敗 (${proxyUrl.slice(0, 60)}...): ${e.message}`);
+          lastErr = e;
+          if (i < PROXIES.length - 1) await sleep(500); // 次のプロキシまで少し待機
+        }
+      }
+      throw new Error(`全プロキシ失敗: ${lastErr?.message}`);
+    }
+
     // ============================================================
     // データ取得（気象庁ETRN）
     // ============================================================
     async function fetchRainFromJMA(prec_no, block_no, year, month) {
-      // ※ daily_a1.php（アメダス地点）を使用
       const targetUrl = `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=${prec_no}&block_no=${block_no}&year=${year}&month=${month}&day=&view=`;
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
-
       try {
-        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(25000) });
-        const json = await res.json();
-        const html = json.contents || "";
+        const html = await fetchViaProxy(targetUrl, 25000);
         if (!html) { console.warn("空レスポンス:", targetUrl); return {}; }
         return parseETRN(html, year, month);
       } catch (e) {
@@ -659,16 +701,28 @@
         console.log("[parseETRN] " + year + "/" + month + " テーブル数: " + tables.length);
 
         for (const table of tables) {
+          // ヘッダー行から「降水量」列のインデックスを特定する
+          let rainColIdx = -1;
+          const headerCells = table.querySelectorAll("tr th");
+          if (headerCells.length > 0) {
+            headerCells.forEach((th, idx) => {
+              const t = th.textContent.replace(/\s/g, "");
+              if (t.includes("降水量") && rainColIdx === -1) rainColIdx = idx;
+            });
+          }
+          // ヘッダーで見つからない場合は1列目（インデックス1）をデフォルトとする
+          if (rainColIdx === -1) rainColIdx = 1;
+
           const rows = table.querySelectorAll("tr");
           let count = 0;
           for (const row of rows) {
             const cells = row.querySelectorAll("td");
-            if (cells.length < 2) continue;
+            if (cells.length <= rainColIdx) continue;
             const dayText = cells[0].textContent.replace(/\s/g, "");
             const day = parseInt(dayText, 10);
             if (isNaN(day) || day < 1 || day > 31) continue;
-            // 2列目：降水量合計(mm) "0.0","12.0","--","×","///" など
-            const rawText = cells[1].textContent.replace(/\s/g, "");
+            // 降水量セル："0.0","12.0","--","×","///" など
+            const rawText = cells[rainColIdx].textContent.replace(/\s/g, "");
             const rainStr = rawText.replace(/[^0-9.]/g, "");
             const rain = rainStr ? parseFloat(rainStr) : 0.0;
             try {
@@ -679,7 +733,7 @@
             } catch (_) { }
           }
           if (count > 0) {
-            console.log("[parseETRN] " + year + "/" + month + ": " + count + "日分取得成功");
+            console.log("[parseETRN] " + year + "/" + month + ": " + count + "日分取得成功 (降水量列=" + rainColIdx + ")");
             break;
           }
         }
@@ -697,14 +751,11 @@
     // ============================================================
     async function fetchWarnings(area_name, area_code) {
       const feedUrl = "https://www.data.jma.go.jp/developer/xml/feed/extra.xml";
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`;
 
       try {
-        const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(20000) });
-        const json = await res.json();
-        const feedXml = json.contents || "";
+        const feedXml = await fetchViaProxy(feedUrl, 20000);
 
-        // 岐阜県の警報・注意報電文URLを探す
+        // 岐阜県の警報・注意報電文URLをすべて収集（上限を10件に拡大）
         const gifu_urls = [];
         const entryRe = /<entry[\s\S]*?<\/entry>/g;
         let em;
@@ -712,9 +763,9 @@
           const block = em[0];
           if (block.includes("岐阜") && block.includes("警報")) {
             const hrefM = block.match(/href="([^"]+VPWW5[^"]+)"/);
-            if (hrefM) {
+            if (hrefM && !gifu_urls.includes(hrefM[1])) {
               gifu_urls.push(hrefM[1]);
-              if (gifu_urls.length >= 2) break;
+              if (gifu_urls.length >= 10) break; // 2件→10件に拡大
             }
           }
         }
@@ -723,15 +774,18 @@
           return { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [] };
         }
 
-        // 最新電文を解析
+        // 最新電文から順に解析し、対象エリアコードを含む電文を採用
         for (const xmlUrl of gifu_urls) {
-          const xProx = `https://api.allorigins.win/get?url=${encodeURIComponent(xmlUrl)}`;
-          const xRes = await fetch(xProx, { signal: AbortSignal.timeout(20000) });
-          const xJson = await xRes.json();
-          const wXml = xJson.contents || "";
-          const parsed = parseWarningXml(wXml, area_code);
-          if (parsed) return parsed;
-          await sleep(300);
+          try {
+            const wXml = await fetchViaProxy(xmlUrl, 20000);
+            const parsed = parseWarningXml(wXml, area_code);
+            // エリアコードが見つかった電文のみ採用（空結果でも対象エリアが含まれていれば採用）
+            if (parsed && parsed._areaFound) return parsed;
+            await sleep(300);
+          } catch (e) {
+            console.warn("電文取得失敗:", xmlUrl, e.message);
+            await sleep(300);
+          }
         }
       } catch (e) {
         console.warn("警報取得失敗:", e.message);
@@ -744,33 +798,51 @@
         const parser = new DOMParser();
         const doc = parser.parseFromString(xml, "text/xml");
 
+        // パースエラーチェック
+        if (doc.querySelector("parsererror")) return null;
+
         let reportDt = "";
         const rdEl = doc.querySelector("ReportDateTime");
         if (rdEl) reportDt = rdEl.textContent;
 
-        const result = { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [], report_dt: reportDt };
+        const result = { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [], report_dt: reportDt, _areaFound: false };
 
         // すべての Item を検索
         const items = doc.querySelectorAll("Item");
         items.forEach(item => {
-          // このItemのAreaコードを確認
+          // エリアコードの照合：textContent全体に対してincludes()で柔軟にマッチ
           let hasArea = false;
           item.querySelectorAll("Area").forEach(area => {
-            area.querySelectorAll("Code").forEach(code => {
+            if (area.textContent.includes(area_code)) hasArea = true;
+          });
+          // 直接 Code タグからも探す（XML構造の違いに対応）
+          if (!hasArea) {
+            item.querySelectorAll("Code").forEach(code => {
               if (code.textContent.trim() === area_code) hasArea = true;
             });
-          });
+          }
           if (!hasArea) return;
+
+          result._areaFound = true;
 
           item.querySelectorAll("Kind").forEach(kind => {
             const nameEl = kind.querySelector("Name");
             if (!nameEl) return;
             const name = nameEl.textContent.trim();
-            if (name && !result.all.includes(name)) result.all.push(name);
+            if (!name) return;
+            if (!result.all.includes(name)) result.all.push(name);
             if (name.includes("乾燥")) { result.kanso = true; result.kanso_time = reportDt; }
             if (name.includes("強風") || name.includes("暴風")) { result.kyofu = true; result.kyofu_time = reportDt; }
           });
         });
+
+        // エリアが電文内に存在するかを確認するため全Codeも走査
+        if (!result._areaFound) {
+          doc.querySelectorAll("Code").forEach(code => {
+            if (code.textContent.trim() === area_code) result._areaFound = true;
+          });
+        }
+
         return result;
       } catch (e) {
         return null;
