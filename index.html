@@ -615,7 +615,7 @@
       const arr = [];
       for (let i = 29; i >= 0; i--) {
         const d = new Date();
-        d.setDate(d.getDate() - i - 1); // 当日は含まない
+        d.setDate(d.getDate() - i - 1);
         arr.push({
           year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(),
           dateStr: toDateStr(d)
@@ -635,56 +635,46 @@
       return "#38bdf8";
     }
 
-    function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-    // タイムアウト付きfetch（AbortSignal.timeoutに非対応の環境でも動作）
-    function fetchWithTimeout(url, ms = 20000) {
+    // ============================================================
+    // ネットワーク
+    // ============================================================
+    function fetchWithTimeout(url, ms = 12000) {
       const ctrl = new AbortController();
       const id = setTimeout(() => ctrl.abort(), ms);
       return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
     }
 
-    // プロキシ経由でURLを取得し、レスポンス文字列を返す。
-    // allorigins / corsproxy.io / codetabs の3種に対応したレスポンス抽出を行う。
-    // 全プロキシが失敗した場合は例外をスロー。
-    async function fetchViaProxy(targetUrl, timeoutMs = 20000) {
-      let lastErr = null;
-      for (let i = 0; i < PROXIES.length; i++) {
-        const proxyUrl = PROXIES[i](targetUrl);
-        try {
-          const res = await fetchWithTimeout(proxyUrl, timeoutMs);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          // allorigins と codetabs は JSON でラップ、corsproxy.io は生テキスト
-          const contentType = res.headers.get("content-type") || "";
-          if (contentType.includes("application/json")) {
-            const json = await res.json();
-            // allorigins: { contents: "..." }
-            // codetabs:   テキストをそのまま返す場合もある
-            const text = json.contents ?? json.body ?? JSON.stringify(json);
-            if (text && text.length > 100) return text;
-            throw new Error("空または短すぎるレスポンス");
-          } else {
-            const text = await res.text();
-            if (text && text.length > 100) return text;
-            throw new Error("空または短すぎるレスポンス");
-          }
-        } catch (e) {
-          console.warn(`[Proxy ${i}] 失敗 (${proxyUrl.slice(0, 60)}...): ${e.message}`);
-          lastErr = e;
-          if (i < PROXIES.length - 1) await sleep(500); // 次のプロキシまで少し待機
+    // 全プロキシを同時に試し、最初に成功したものを返す（競争方式）
+    async function fetchViaProxy(targetUrl, timeoutMs = 12000) {
+      const attempts = PROXIES.map(async (makeUrl, i) => {
+        const proxyUrl = makeUrl(targetUrl);
+        const res = await fetchWithTimeout(proxyUrl, timeoutMs);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const contentType = res.headers.get("content-type") || "";
+        let text;
+        if (contentType.includes("application/json")) {
+          const json = await res.json();
+          text = json.contents ?? json.body ?? JSON.stringify(json);
+        } else {
+          text = await res.text();
         }
-      }
-      throw new Error(`全プロキシ失敗: ${lastErr?.message}`);
+        if (!text || text.length <= 100) throw new Error("空または短すぎるレスポンス");
+        console.log(`[Proxy ${i}] 成功: ${proxyUrl.slice(0, 60)}...`);
+        return text;
+      });
+
+      // どれか1つでも成功すれば即返す
+      return Promise.any(attempts);
     }
 
     // ============================================================
-    // データ取得（気象庁ETRN）
+    // データ取得（気象庁ETRN）— 月を並列取得
     // ============================================================
     async function fetchRainFromJMA(prec_no, block_no, year, month) {
       const targetUrl = `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=${prec_no}&block_no=${block_no}&year=${year}&month=${month}&day=&view=`;
       try {
-        const html = await fetchViaProxy(targetUrl, 25000);
-        if (!html) { console.warn("空レスポンス:", targetUrl); return {}; }
+        const html = await fetchViaProxy(targetUrl, 15000);
+        if (!html) return {};
         return parseETRN(html, year, month);
       } catch (e) {
         console.warn("ETRN取得失敗:", e.message);
@@ -698,10 +688,8 @@
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, "text/html");
         const tables = doc.querySelectorAll("table");
-        console.log("[parseETRN] " + year + "/" + month + " テーブル数: " + tables.length);
 
         for (const table of tables) {
-          // ヘッダー行から「降水量」列のインデックスを特定する
           let rainColIdx = -1;
           const headerCells = table.querySelectorAll("tr th");
           if (headerCells.length > 0) {
@@ -710,7 +698,6 @@
               if (t.includes("降水量") && rainColIdx === -1) rainColIdx = idx;
             });
           }
-          // ヘッダーで見つからない場合は1列目（インデックス1）をデフォルトとする
           if (rainColIdx === -1) rainColIdx = 1;
 
           const rows = table.querySelectorAll("tr");
@@ -721,7 +708,6 @@
             const dayText = cells[0].textContent.replace(/\s/g, "");
             const day = parseInt(dayText, 10);
             if (isNaN(day) || day < 1 || day > 31) continue;
-            // 降水量セル："0.0","12.0","--","×","///" など
             const rawText = cells[rainColIdx].textContent.replace(/\s/g, "");
             const rainStr = rawText.replace(/[^0-9.]/g, "");
             const rain = rainStr ? parseFloat(rainStr) : 0.0;
@@ -732,13 +718,7 @@
               count++;
             } catch (_) { }
           }
-          if (count > 0) {
-            console.log("[parseETRN] " + year + "/" + month + ": " + count + "日分取得成功 (降水量列=" + rainColIdx + ")");
-            break;
-          }
-        }
-        if (Object.keys(result).length === 0) {
-          console.warn("[parseETRN] " + year + "/" + month + ": データ0件 HTMLサイズ=" + html.length);
+          if (count > 0) break;
         }
       } catch (e) {
         console.warn("HTML解析エラー:", e.message);
@@ -747,44 +727,54 @@
     }
 
     // ============================================================
-    // データ取得（気象庁 防災情報XML）
+    // データ取得（気象庁 防災情報XML）— フィードを1回だけ取得して全地域で共有
     // ============================================================
-    async function fetchWarnings(area_name, area_code) {
+    let _warningFeedCache = null; // { gifu_urls, fetchedAt }
+
+    async function fetchGifuWarningUrls() {
+      // 5分以内のキャッシュを再利用
+      if (_warningFeedCache && Date.now() - _warningFeedCache.fetchedAt < 5 * 60 * 1000) {
+        return _warningFeedCache.gifu_urls;
+      }
       const feedUrl = "https://www.data.jma.go.jp/developer/xml/feed/extra.xml";
-
-      try {
-        const feedXml = await fetchViaProxy(feedUrl, 20000);
-
-        // 岐阜県の警報・注意報電文URLをすべて収集（上限を10件に拡大）
-        const gifu_urls = [];
-        const entryRe = /<entry[\s\S]*?<\/entry>/g;
-        let em;
-        while ((em = entryRe.exec(feedXml)) !== null) {
-          const block = em[0];
-          if (block.includes("岐阜") && block.includes("警報")) {
-            const hrefM = block.match(/href="([^"]+VPWW5[^"]+)"/);
-            if (hrefM && !gifu_urls.includes(hrefM[1])) {
-              gifu_urls.push(hrefM[1]);
-              if (gifu_urls.length >= 10) break; // 2件→10件に拡大
-            }
+      const feedXml = await fetchViaProxy(feedUrl, 12000);
+      const gifu_urls = [];
+      const entryRe = /<entry[\s\S]*?<\/entry>/g;
+      let em;
+      while ((em = entryRe.exec(feedXml)) !== null) {
+        const block = em[0];
+        if (block.includes("岐阜") && block.includes("警報")) {
+          const hrefM = block.match(/href="([^"]+VPWW5[^"]+)"/);
+          if (hrefM && !gifu_urls.includes(hrefM[1])) {
+            gifu_urls.push(hrefM[1]);
+            if (gifu_urls.length >= 10) break;
           }
         }
+      }
+      _warningFeedCache = { gifu_urls, fetchedAt: Date.now() };
+      return gifu_urls;
+    }
 
+    // 電文URLリストを並列取得し、各エリアコードに一致する電文を返す
+    async function fetchWarnings(area_name, area_code) {
+      try {
+        const gifu_urls = await fetchGifuWarningUrls();
         if (!gifu_urls.length) {
           return { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [] };
         }
 
-        // 最新電文から順に解析し、対象エリアコードを含む電文を採用
-        for (const xmlUrl of gifu_urls) {
-          try {
-            const wXml = await fetchViaProxy(xmlUrl, 20000);
-            const parsed = parseWarningXml(wXml, area_code);
-            // エリアコードが見つかった電文のみ採用（空結果でも対象エリアが含まれていれば採用）
-            if (parsed && parsed._areaFound) return parsed;
-            await sleep(300);
-          } catch (e) {
-            console.warn("電文取得失敗:", xmlUrl, e.message);
-            await sleep(300);
+        // 全電文を並列取得
+        const results = await Promise.allSettled(
+          gifu_urls.map(async xmlUrl => {
+            const wXml = await fetchViaProxy(xmlUrl, 12000);
+            return parseWarningXml(wXml, area_code);
+          })
+        );
+
+        // 対象エリアが見つかった最初の結果を採用
+        for (const r of results) {
+          if (r.status === "fulfilled" && r.value && r.value._areaFound) {
+            return r.value;
           }
         }
       } catch (e) {
@@ -797,8 +787,6 @@
       try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(xml, "text/xml");
-
-        // パースエラーチェック
         if (doc.querySelector("parsererror")) return null;
 
         let reportDt = "";
@@ -807,15 +795,12 @@
 
         const result = { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [], report_dt: reportDt, _areaFound: false };
 
-        // すべての Item を検索
         const items = doc.querySelectorAll("Item");
         items.forEach(item => {
-          // エリアコードの照合：textContent全体に対してincludes()で柔軟にマッチ
           let hasArea = false;
           item.querySelectorAll("Area").forEach(area => {
             if (area.textContent.includes(area_code)) hasArea = true;
           });
-          // 直接 Code タグからも探す（XML構造の違いに対応）
           if (!hasArea) {
             item.querySelectorAll("Code").forEach(code => {
               if (code.textContent.trim() === area_code) hasArea = true;
@@ -836,7 +821,6 @@
           });
         });
 
-        // エリアが電文内に存在するかを確認するため全Codeも走査
         if (!result._areaFound) {
           doc.querySelectorAll("Code").forEach(code => {
             if (code.textContent.trim() === area_code) result._areaFound = true;
@@ -885,7 +869,6 @@
       const vc = verdict === "警報" ? "warn" : verdict === "注意報" ? "chui" : "none";
       const vLabel = verdict === "発令なし" ? "発令なし" : `林野火災${verdict}`;
 
-      // サマリーボックス
       const r3Alert = rain3 <= 1.0;
       const r30Alert = rain30 <= 30.0;
       const statBoxes = `
@@ -906,7 +889,6 @@
       <div class="stat-value ${warnings.kyofu ? 'kyofu-val' : ''}">${warnings.kyofu ? '発表中' : 'なし'}</div>
     </div>`;
 
-      // バーチャート
       const maxRain = Math.max(...days.map(d => d.rain || 0), 5);
       const bars = days.map((d, i) => {
         const isRecent = i >= days.length - 3;
@@ -917,7 +899,6 @@
         return `<div class="bar-col"><div class="bar" style="height:${dispH}px;background:${bg};opacity:${opacity};animation-delay:${i * 0.015}s" title="${d.dateStr}: ${d.rain ?? 0}mm"></div></div>`;
       }).join("");
 
-      // テーブル行（全日分）
       const tableRows = [...days].reverse().map(d => {
         const rainClass = (d.rain || 0) > 0 ? 'td-rain-val' : 'td-rain-zero';
         const kansoCell = warnings.kanso && d.dateStr === days[days.length - 1].dateStr
@@ -932,7 +913,6 @@
     </tr>`;
       }).join("");
 
-      // 現在発令中の注意報リスト
       const warnTags = warnings.all && warnings.all.length > 0
         ? `<div class="warn-list">
         <div class="warn-list-label">現在発表中の警報・注意報</div>
@@ -988,48 +968,44 @@
     }
 
     // ============================================================
-    // メイン処理
+    // メイン処理 — 全地域・全月を並列処理
     // ============================================================
     async function loadAll() {
       const btn = document.getElementById('refreshBtn');
       btn.disabled = true;
       btn.textContent = '取得中...';
 
-      // ローディングカードを表示
       const cardsArea = document.getElementById('cardsArea');
       cardsArea.innerHTML = Object.entries(STATIONS).map(([n, c]) => renderLoadingCard(n, c.note || "")).join('');
 
-      // 今日の日付
       const today = new Date();
       document.getElementById('headerSub').textContent =
         `判定基準日: ${toDateStr(today)}　|　最終更新: ${today.toLocaleTimeString('ja-JP')}`;
 
-      for (const [name, cfg] of Object.entries(STATIONS)) {
+      const dates = getLast30Days();
+      const months = [...new Set(dates.map(d => `${d.year}-${d.month}`))].map(s => {
+        const [y, m] = s.split('-').map(Number);
+        return { year: y, month: m };
+      });
+
+      // 警報フィードを先に1回だけ取得（全地域共通）
+      try { await fetchGifuWarningUrls(); } catch (e) { console.warn("フィード事前取得失敗:", e.message); }
+
+      // 全地域を並列処理（Promise.allSettled で一部失敗しても継続）
+      const stationEntries = Object.entries(STATIONS);
+      await Promise.allSettled(stationEntries.map(async ([name, cfg]) => {
         try {
-          const dates = getLast30Days();
+          // 各地域の月別降水量を並列取得
+          const rainResults = await Promise.all(
+            months.map(({ year, month }) => fetchRainFromJMA(cfg.prec_no, cfg.block_no, year, month))
+          );
+          const rainByDate = Object.assign({}, ...rainResults);
 
-          // 月ごとに降水量取得
-          const months = [...new Set(dates.map(d => `${d.year}-${d.month}`))].map(s => {
-            const [y, m] = s.split('-').map(Number);
-            return { year: y, month: m };
-          });
-
-          const rainByDate = {};
-          for (const { year, month } of months) {
-            const data = await fetchRainFromJMA(cfg.prec_no, cfg.block_no, year, month);
-            Object.assign(rainByDate, data);
-            await sleep(400);
-          }
-
-          // 日別データ組み立て
-          const days = dates.map(d => ({
-            ...d, rain: rainByDate[d.dateStr] ?? 0
-          }));
-
+          const days = dates.map(d => ({ ...d, rain: rainByDate[d.dateStr] ?? 0 }));
           const rain3 = days.slice(-3).reduce((s, d) => s + (d.rain || 0), 0);
           const rain30 = days.reduce((s, d) => s + (d.rain || 0), 0);
 
-          // 警報・注意報取得
+          // 降水量と並行して警報取得
           const warnings = await fetchWarnings(name, cfg.area_code);
 
           const verdict = judge(
@@ -1038,7 +1014,6 @@
             warnings.kanso, warnings.kyofu
           );
 
-          // カード置き換え
           const card = document.getElementById(`card-${name.replace(/\s/g, '')}`);
           if (card) {
             card.outerHTML = renderCard(
@@ -1054,8 +1029,7 @@
             card.innerHTML += `<div class="error-msg">⚠ エラー: ${e.message}</div>`;
           }
         }
-        await sleep(500);
-      }
+      }));
 
       btn.disabled = false;
       btn.textContent = '🔄 最新情報に更新';
