@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>林野火災注意報・警報 判定ダッシュボード</title>
+  <title>火災警報等判定ダッシュボード</title>
   <style>
     /* ===== リセット・基本 ===== */
     *,
@@ -171,13 +171,43 @@
       background: #12161f;
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px 18px;
+      padding: 14px 18px;
       margin-bottom: 22px;
       font-size: 12px;
       font-family: monospace;
       display: flex;
-      flex-wrap: wrap;
-      gap: 18px;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .cond-block {
+      padding: 10px 14px;
+      border-radius: 8px;
+      border-left: 4px solid transparent;
+      background: #0f1320;
+    }
+
+    .cond-block:first-child {
+      border-left-color: #22c55e;
+    }
+
+    .cond-block:last-child {
+      border-left-color: var(--warn);
+    }
+
+    .cond-block-title {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: .02em;
+      margin-bottom: 6px;
+    }
+
+    .cond-forest {
+      color: #4ade80;
+    }
+
+    .cond-fire {
+      color: #f87171;
     }
 
     .cond-warn {
@@ -191,7 +221,14 @@
     }
 
     .cond-muted {
+      color: #c8d6e8;
+      line-height: 1.8;
+    }
+
+    .cond-note {
+      margin-top: 5px;
       color: var(--muted);
+      font-size: 11px;
     }
 
     /* ===== カードグリッド ===== */
@@ -281,7 +318,7 @@
       background: #1a1f2e;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 8px 6px;
+      padding: 10px 8px;
       text-align: center;
       transition: border-color .3s, background .3s;
     }
@@ -302,17 +339,18 @@
     }
 
     .stat-label {
-      font-size: 10px;
-      color: var(--muted);
-      margin-bottom: 4px;
+      font-size: 13px;
+      color: var(--sub);
+      margin-bottom: 5px;
       line-height: 1.3;
+      font-weight: 600;
     }
 
     .stat-value {
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 18px;
+      font-weight: 800;
       font-family: monospace;
-      color: var(--muted);
+      color: var(--sub);
     }
 
     .stat-value.rain-val {
@@ -329,8 +367,8 @@
 
     /* ===== バーチャート ===== */
     .chart-label {
-      font-size: 11px;
-      color: var(--muted);
+      font-size: 13px;
+      color: var(--sub);
       font-family: monospace;
       margin: 14px 0 6px;
     }
@@ -370,8 +408,8 @@
     }
 
     .axis-label {
-      font-size: 10px;
-      color: var(--muted);
+      font-size: 12px;
+      color: var(--sub);
       font-family: monospace;
     }
 
@@ -526,12 +564,362 @@
       animation: pulse 1.5s infinite;
     }
 
+    /* ===== セクション見出し（カード内 ① ②） ===== */
+    .section-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      padding: 7px 12px;
+      border-radius: 6px;
+      margin: 14px 0 8px;
+    }
+
+    .section-forest {
+      color: #4ade80;
+      background: #0a2010;
+      border: 1px solid #166534;
+    }
+
+    .section-fire {
+      color: #fca5a5;
+      background: #2a0a0a;
+      border: 1px solid #7f1d1d;
+      margin-top: 16px;
+    }
+
+    /* ===== 計算根拠ボタン ===== */
+    .eff-calc-btn {
+      margin-left: 6px;
+      background: none;
+      border: 1px solid #AEB7C2;
+      color: #AEB7C2 !important;
+      padding: 1px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-family: monospace;
+      cursor: pointer;
+    }
+    .eff-calc-btn:hover {
+      background: #1e2533;
+    }
+
     /* ===== エラー ===== */
     .error-msg {
       color: #f87171;
       font-size: 12px;
       margin-top: 12px;
       font-family: monospace;
+    }
+
+    /* ===== セクションブロック（林野火災 / 火災警報 の大枠） ===== */
+    .section-block {
+      background: var(--panel);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .section-block-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 24px;
+      border-bottom: 2px solid var(--border);
+      flex-wrap: wrap;
+    }
+
+    .section-block-forest {
+      background: linear-gradient(135deg, #071a0e 0%, #0d2418 100%);
+      border-bottom-color: #16a34a;
+      border-left: 5px solid #22c55e;
+    }
+
+    .section-block-fire {
+      background: linear-gradient(135deg, #1a0707 0%, #2a0e0e 100%);
+      border-bottom-color: #b91c1c;
+      border-left: 5px solid #f97316;
+    }
+
+    .section-block-icon {
+      font-size: 26px;
+      line-height: 1;
+      filter: drop-shadow(0 0 6px currentColor);
+    }
+
+    .section-block-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: .03em;
+      line-height: 1.2;
+    }
+
+    .section-block-title-sub {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .02em;
+      margin-top: 3px;
+      opacity: .75;
+    }
+
+    .section-block-forest .section-block-title { color: #4ade80; }
+    .section-block-fire .section-block-title { color: #fca5a5; }
+
+    .section-block-verdict {
+      margin-left: auto;
+      font-size: 14px;
+      font-weight: 800;
+      font-family: monospace;
+      letter-spacing: .02em;
+    }
+
+    .svd-loading { color: var(--muted); }
+    .svd-none    { color: var(--muted); }
+    .svd-chui    { color: var(--chui); }
+    .svd-warn    { color: var(--warn); }
+    .svd-reached { color: var(--warn); }
+    .svd-ok      { color: #22c55e; }
+
+    /* ===== 地域パネルグリッド ===== */
+    .area-panels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 0;
+    }
+
+    .area-panel {
+      padding: 20px 24px;
+      border-right: 1px solid var(--border);
+      min-width: 0;
+    }
+
+    .area-panel:last-child { border-right: none; }
+
+    /* ローディング時の地域パネル */
+    .area-panel-loading {
+      padding: 20px 24px;
+      border-right: 1px solid var(--border);
+    }
+
+    .area-panel-loading:last-child { border-right: none; }
+
+    .panel-area-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 10px 16px;
+      margin: -20px -24px 16px;
+      background: #161c2a;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .panel-area-name {
+      font-size: 22px;
+      font-weight: 900;
+      letter-spacing: -.5px;
+      color: var(--text);
+    }
+
+    .panel-area-note {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: monospace;
+      margin-bottom: 12px;
+    }
+
+    /* ===== 判定基準アコーディオン ===== */
+    .criteria-accordion {
+      border-top: 1px solid var(--border);
+    }
+
+    .criteria-toggle {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: monospace;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: .03em;
+      transition: background .2s, color .2s;
+    }
+
+    .criteria-toggle:hover {
+      background: #1e2533;
+      color: var(--sub);
+    }
+
+    .criteria-toggle-icon {
+      font-size: 11px;
+      transition: transform .2s;
+    }
+
+    .criteria-body {
+      padding: 12px 20px 16px;
+      border-top: 1px solid var(--border);
+      background: #12161f;
+      font-size: 12px;
+      font-family: monospace;
+    }
+
+    /* ===== 判定シミュレーター ===== */
+    .sim-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .sim-row {
+      display: grid;
+      grid-template-columns: 10em 80px 1fr;
+      align-items: center;
+      gap: 10px;
+      background: #1a1f2e;
+      border-radius: 7px;
+      padding: 8px 12px;
+    }
+
+    .sim-label {
+      font-size: 12px;
+      font-family: monospace;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .sim-input {
+      background: #0f1320;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 800;
+      font-family: monospace;
+      border-radius: 6px;
+      padding: 5px 8px;
+      width: 100%;
+      text-align: right;
+      transition: border-color .2s;
+    }
+
+    .sim-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .sim-threshold {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: monospace;
+    }
+
+    .sim-presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .sim-preset-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: monospace;
+      margin-right: 2px;
+    }
+
+    .sim-preset-btn {
+      background: #1e2533;
+      border: 1px solid var(--border);
+      color: var(--sub);
+      font-size: 11px;
+      font-family: monospace;
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+
+    .sim-preset-btn:hover {
+      background: #252a3a;
+      color: var(--text);
+      border-color: var(--accent);
+    }
+
+    .sim-result-box {
+      border-radius: 9px;
+      padding: 14px 16px;
+      font-family: monospace;
+      font-size: 12px;
+      line-height: 1.9;
+      border: 1.5px solid;
+    }
+
+    .sim-result-reached {
+      background: #2a0a0a;
+      border-color: var(--warn);
+    }
+
+    .sim-result-excluded {
+      background: #1a1a0a;
+      border-color: var(--chui);
+    }
+
+    .sim-result-none {
+      background: #1a1f2e;
+      border-color: var(--border);
+    }
+
+    .sim-result-unknown {
+      background: #1a1f2e;
+      border-color: var(--muted);
+    }
+
+    .sim-verdict {
+      font-size: 16px;
+      font-weight: 900;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .sim-flag-row {
+      display: grid;
+      grid-template-columns: 10em 1fr;
+      gap: 4px 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .sim-flag-key {
+      color: #AEB7C2;
+      font-size: 11px;
+    }
+
+    .sim-flag-val {
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .sim-flag-ok   { color: var(--warn); }
+    .sim-flag-ng   { color: var(--muted); }
+    .sim-flag-excl { color: var(--chui); }
+
+    @media (max-width: 600px) {
+      .sim-row {
+        grid-template-columns: 1fr 70px;
+        grid-template-rows: auto auto;
+      }
+      .sim-threshold { grid-column: 1 / -1; padding-left: 2px; }
     }
 
     /* ===== 凡例 ===== */
@@ -553,6 +941,7 @@
       color: var(--rain);
     }
   </style>
+</style>
 </head>
 
 <body>
@@ -561,29 +950,159 @@
     <!-- ヘッダー -->
     <div class="header fade-in">
       <div>
-        <div class="header-label">Forest Fire Advisory System</div>
-        <div class="header-title">林野火災注意報・警報 判定ダッシュボード</div>
-        <div class="header-sub" id="headerSub">判定基準日: — &nbsp;|&nbsp; 最終更新: —</div>
+        <div class="header-label">Fire Warning Advisory System</div>
+        <div class="header-title">火災警報等判定ダッシュボード</div>
+        <div class="header-sub" id="headerSub">読込中...</div>
       </div>
       <button id="refreshBtn" onclick="loadAll()">🔄 最新情報に更新</button>
     </div>
 
-    <!-- 発令条件 -->
-    <div class="condition-bar fade-in2">
-      <span><span class="cond-chui">【注意報】</span><span class="cond-muted">　①前3日≦1mm かつ 前30日≦30mm　／　②前3日≦1mm かつ
-          乾燥注意報発表中</span></span>
-      <span><span class="cond-warn">【警　報】</span><span class="cond-muted">　注意報条件 ＋ 強風注意報発表中</span></span>
+    <!-- 林野火災セクション -->
+    <div class="section-block fade-in3" id="forestSection">
+      <div class="section-block-header section-block-forest">
+        <span class="section-block-icon">🌲</span>
+        <span class="section-block-title" id="forestSectionTitle">林野火災注意報・警報</span>
+        <span class="section-block-verdict" id="forestVerdict"><span class="svd-loading">判定中...</span></span>
+      </div>
+      <div class="area-panels" id="forestPanels"></div>
+      <!-- 林野火災 出典 -->
+      <div class="criteria-accordion">
+        <button class="criteria-toggle" onclick="toggleCriteria('forestSourcesAccordion')">
+          <span>📊 出典・データソース</span>
+          <span class="criteria-toggle-icon" id="forestSourcesAccordionIcon">▼</span>
+        </button>
+        <div class="criteria-body" id="forestSourcesAccordion" style="display:none;">
+          <div id="forestSourcesBlock" style="font-family:monospace;color:var(--sub);">
+            <div style="color:var(--muted);font-size:12px;">データ取得後に表示されます...</div>
+          </div>
+        </div>
+      </div>
+      <!-- 林野火災 判定基準 -->
+      <div class="criteria-accordion">
+        <button class="criteria-toggle" onclick="toggleCriteria('forestCriteria')">
+          <span>📋 判定基準を確認する</span>
+          <span class="criteria-toggle-icon" id="forestCriteriaIcon">▼</span>
+        </button>
+        <div class="criteria-body" id="forestCriteria" style="display:none;">
+          <div class="cond-muted">
+            <span class="cond-chui">【注意報】</span> 前3日≦1mm かつ 前30日≦30mm　／　前3日≦1mm かつ 乾燥注意報発表中<br>
+            <span class="cond-warn">【警 報】</span> 注意報条件に加え、強風注意報が発表中
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- カード -->
-    <div class="cards fade-in3" id="cardsArea"></div>
+    <!-- 火災警報セクション -->
+    <div class="section-block fade-in3" id="fireSection" style="margin-top:20px;">
+      <div class="section-block-header section-block-fire">
+        <span class="section-block-icon">🔥</span>
+        <span class="section-block-title">火災警報</span>
+        <span class="section-block-verdict" id="fireVerdict"><span class="svd-loading">判定中...</span></span>
+      </div>
+      <div class="area-panels" id="firePanels"></div>
+      <!-- 火災警報 出典 -->
+      <div class="criteria-accordion">
+        <button class="criteria-toggle" onclick="toggleCriteria('fireSourcesAccordion')">
+          <span>📊 出典・データソース</span>
+          <span class="criteria-toggle-icon" id="fireSourcesAccordionIcon">▼</span>
+        </button>
+        <div class="criteria-body" id="fireSourcesAccordion" style="display:none;">
+          <div id="fireSourcesBlock" style="font-family:monospace;color:var(--sub);">
+            <div style="color:var(--muted);font-size:12px;">データ取得後に表示されます...</div>
+          </div>
+        </div>
+      </div>
+      <!-- 火災警報 判定基準 -->
+      <div class="criteria-accordion">
+        <button class="criteria-toggle" onclick="toggleCriteria('fireCriteria')">
+          <span>📋 判定基準を確認する</span>
+          <span class="criteria-toggle-icon" id="fireCriteriaIcon">▼</span>
+        </button>
+        <div class="criteria-body" id="fireCriteria" style="display:none;">
+          <div class="cond-muted">
+            <span class="cond-chui">【発令基準】</span><br>
+            &nbsp;&nbsp;● <span style="color:#f97316;font-weight:700;">基準①</span>：実効湿度 ≦60% かつ 最小湿度 ≦40% かつ 現に風速10m/s以上、または風速10m/s以上になると予想されるとき<br>
+            &nbsp;&nbsp;● <span style="color:#f97316;font-weight:700;">基準②</span>：現に風速12m/s以上、または風速12m/s以上になると予想されるとき<br>
+            <span class="cond-warn">【除外条件（基準②のみ適用）】</span> 降雨・降雪があるとき、または実効湿度70%以上かつ最小湿度50%以上のときは発令しない
+          </div>
+          <div class="cond-note">※ 気象条件の充足を示す判定です。実際の発令は消防長の判断によります。<br>※ 細則：大垣消防組合消防法等施行細則</div>
+        </div>
+      </div>
+      <!-- 判定シミュレーター -->
+      <div class="criteria-accordion">
+        <button class="criteria-toggle" onclick="toggleCriteria('simPanel')">
+          <span>🧪 判定シミュレーター（気象値を入力して判定を確認）</span>
+          <span class="criteria-toggle-icon" id="simPanelIcon">▼</span>
+        </button>
+        <div class="criteria-body" id="simPanel" style="display:none;">
+          <div class="sim-grid">
+            <div class="sim-row">
+              <label class="sim-label">🌫 実効湿度 (%)</label>
+              <input class="sim-input" id="simEffHum" type="number" value="58" min="0" max="100" step="1" oninput="runSim()">
+              <span class="sim-threshold">基準①：≤60%</span>
+            </div>
+            <div class="sim-row">
+              <label class="sim-label">💧 最小湿度 (%)</label>
+              <input class="sim-input" id="simMinHum" type="number" value="38" min="0" max="100" step="1" oninput="runSim()">
+              <span class="sim-threshold">基準①：≤40%</span>
+            </div>
+            <div class="sim-row">
+              <label class="sim-label">💨 実況風速 (m/s)</label>
+              <input class="sim-input" id="simWind" type="number" value="11" min="0" max="50" step="0.1" oninput="runSim()">
+              <span class="sim-threshold">基準①：≥10 / 基準②：≥12</span>
+            </div>
+            <div class="sim-row">
+              <label class="sim-label">🔭 予報風速 (m/s)</label>
+              <input class="sim-input" id="simFcWind" type="number" value="0" min="0" max="50" step="1" oninput="runSim()">
+              <span class="sim-threshold">実況と OR で判定（0=予報なし）</span>
+            </div>
+            <div class="sim-row">
+              <label class="sim-label">🌧 当日降水 (mm)</label>
+              <input class="sim-input" id="simRain" type="number" value="0" min="0" max="200" step="0.5" oninput="runSim()">
+              <span class="sim-threshold">除外（基準②）：>0mm</span>
+            </div>
+          </div>
+          <div style="margin:10px 0 6px;padding:8px 12px;background:#12161f;border:1px solid var(--border);border-radius:7px;">
+            <div style="font-size:11px;color:var(--muted);font-family:monospace;font-weight:700;margin-bottom:8px;">📡 連続超過カウント</div>
+            <div class="sim-grid" style="gap:6px;">
+              <div class="sim-row">
+                <label class="sim-label">10m/s連続回数</label>
+                <input class="sim-input" id="simS10" type="number" value="0" min="0" max="20" step="1" oninput="runSim()">
+                <span class="sim-threshold">4回以上で強く検討</span>
+              </div>
+              <div class="sim-row">
+                <label class="sim-label">12m/s連続回数</label>
+                <input class="sim-input" id="simS12" type="number" value="0" min="0" max="20" step="1" oninput="runSim()">
+                <span class="sim-threshold">4回以上で強く検討</span>
+              </div>
+            </div>
+          </div>
+          <div class="sim-presets">
+            <span class="sim-preset-label">発令判定：</span>
+            <button class="sim-preset-btn" onclick="simPreset('k1')">基準①で発令</button>
+            <button class="sim-preset-btn" onclick="simPreset('k2')">基準②で発令</button>
+            <button class="sim-preset-btn" onclick="simPreset('k1k2')">基準①②両方</button>
+            <button class="sim-preset-btn" onclick="simPreset('excRain')">基準②・降雨除外</button>
+            <button class="sim-preset-btn" onclick="simPreset('excHum')">基準②・湿度除外</button>
+            <button class="sim-preset-btn" onclick="simPreset('none')">基準未到達</button>
+          </div>
+          <div class="sim-presets" style="margin-top:6px;">
+            <span class="sim-preset-label">連続超過：</span>
+            <button class="sim-preset-btn" onclick="simPreset('str10_1')">10m/s 初回</button>
+            <button class="sim-preset-btn" onclick="simPreset('str10_4')">10m/s × 4回以上</button>
+            <button class="sim-preset-btn" onclick="simPreset('str12_1')">12m/s 初回</button>
+            <button class="sim-preset-btn" onclick="simPreset('str12_4')">12m/s × 4回以上</button>
+          </div>
+          <div id="simResult" style="margin-top:14px;"></div>
+        </div>
+      </div>
+    </div>
 
     <!-- 凡例 -->
     <div class="legend fade-in3">
       <span>📊 棒グラフ：日別降水量（高いほど多い）</span>
       <span><span class="rain-c">■ 明るい青</span> = 直近3日間</span>
-      <span>データソース: 気象庁ETRN（降水量）/ 防災情報XML（警報・注意報）</span>
-      <span>※注意報履歴は現在発令中のもののみ表示</span>
+      <span>データソース: GAS（Google Apps Script）経由 気象庁データ</span>
     </div>
 
   </div>
@@ -592,449 +1111,703 @@
     // ============================================================
     // 設定
     // ============================================================
-    const STATIONS = {
-      "大垣市": { prec_no: "52", block_no: "0496", area_code: "2120200" },
-      "池田町": { prec_no: "52", block_no: "1301", area_code: "2140400", note: "観測地点: 揖斐川町" },
-    };
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycby3ScawTt3GhVJZzu5Gpngf0VgbJ9mWDQQZ7ks91o1hXlILbhvnd1-rtuHS_BfSwwCN/exec';
 
-    // プロキシをリスト化し、失敗時に自動フォールバック
-    const PROXIES = [
-      url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-    ];
+    const STATIONS = {
+      '大垣市': { prec_no:'52', block_no:'0496', area_code:'2120200', amedas_no:'52581', amedas_name:'大垣（大垣市禾森町）', note:'観測地点: 大垣市禾森町' },
+      '池田町': { prec_no:'52', block_no:'1301', area_code:'2140400', amedas_no:'52511', amedas_name:'揖斐川（揖斐郡揖斐川町三輪）', note:'観測地点: 揖斐川町' },
+    };
 
     // ============================================================
     // ユーティリティ
     // ============================================================
-    function toDateStr(d) {
-      return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function getLast30Days() {
-      const arr = [];
-      for (let i = 29; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i - 1);
-        arr.push({
-          year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate(),
-          dateStr: toDateStr(d)
-        });
-      }
-      return arr;
-    }
-
     function getRainColor(mm, isRecent) {
-      if (isRecent && mm > 0) return "linear-gradient(to top,#38bdf8,#7dd3fc)";
-      if (isRecent) return "#0c2a3e";
-      if (!mm || mm === 0) return "#1e2533";
-      if (mm < 1) return "#0c4a6e";
-      if (mm < 5) return "#0369a1";
-      if (mm < 15) return "#0284c7";
-      if (mm < 30) return "#0ea5e9";
-      return "#38bdf8";
+      if (isRecent && mm > 0) return 'linear-gradient(to top,#38bdf8,#7dd3fc)';
+      if (isRecent) return '#0c2a3e';
+      if (!mm || mm === 0) return '#1e2533';
+      if (mm < 1) return '#0c4a6e';
+      if (mm < 5) return '#0369a1';
+      if (mm < 15) return '#0284c7';
+      if (mm < 30) return '#0ea5e9';
+      return '#38bdf8';
+    }
+
+    function normalizeObsTime(v) {
+      if (!v && v !== 0) return '';
+      const s = String(v).trim();
+      if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(s)) return s.slice(0,5);
+      const iso = s.match(/T(\d{2}):(\d{2})/);
+      if (iso) return `${iso[1]}:${iso[2]}`;
+      const n = Number(s);
+      if (!isNaN(n)) {
+        const totalMin = Math.round((n % 1) * 24 * 60);
+        const h = Math.floor(totalMin/60), m = totalMin % 60;
+        return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      }
+      return s.slice(0,5);
+    }
+
+    function safeJSON(s, fallback) {
+      if (!s || s === '') return fallback;
+      try { return JSON.parse(s); } catch(_) { return fallback; }
     }
 
     // ============================================================
-    // ネットワーク（モダンブラウザ専用・最速優先）
+    // GASデータ取得
     // ============================================================
-    function fetchWithTimeout(url, ms) {
+    async function loadFromGas() {
+      const url = GAS_API_URL + '?action=current&_=' + Date.now();
       const ctrl = new AbortController();
-      const id = setTimeout(() => ctrl.abort(), ms);
-      return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(id));
-    }
-
-    // 3プロキシを同時発射 → 最初に成功したものを即採用（Promise.any）
-    async function fetchViaProxy(targetUrl, timeoutMs = 10000) {
-      return Promise.any(PROXIES.map(async (makeUrl) => {
-        const res = await fetchWithTimeout(makeUrl(targetUrl), timeoutMs);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const ct = res.headers.get("content-type") || "";
-        let text;
-        if (ct.includes("application/json")) {
-          const json = await res.json();
-          text = json.contents ?? json.body ?? JSON.stringify(json);
-        } else {
-          text = await res.text();
-        }
-        if (!text || text.length <= 100) throw new Error("レスポンス不正");
-        return text;
-      }));
+      const id = setTimeout(() => ctrl.abort(), 20000);
+      const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' }).finally(() => clearTimeout(id));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || 'GASエラー');
+      return json;
     }
 
     // ============================================================
-    // データ取得（気象庁ETRN）— 月を並列取得
+    // 林野火災パネル描画
     // ============================================================
-    async function fetchRainFromJMA(prec_no, block_no, year, month) {
-      const targetUrl = `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=${prec_no}&block_no=${block_no}&year=${year}&month=${month}&day=&view=`;
-      try {
-        const html = await fetchViaProxy(targetUrl, 10000);
-        if (!html) return {};
-        return parseETRN(html, year, month);
-      } catch (e) {
-        console.warn("ETRN取得失敗:", e.message);
-        return {};
-      }
-    }
+    function renderForestPanel(r) {
+      const name = r['市町名'] || '';
+      const nm   = name.replace(/\s/g,'');
+      const rain3  = Number(r['前3日降水量mm'])  || 0;
+      const rain30 = Number(r['前30日降水量mm']) || 0;
+      const verdict = r['林野火災判定'] || '—';
+      const vc = verdict === '警報' ? 'warn' : verdict === '注意報' ? 'chui' : 'none';
+      const kanso  = r['乾燥注意報'] === 'あり';
+      const kyofu  = r['強風注意報'] === 'あり';
+      const warnAll = r['発表中注意報警報'] || 'なし';
+      const updatedAt = r['更新日時'] || '';
+      const note = r['観測地点'] || '';
 
-    function parseETRN(html, year, month) {
-      const result = {};
-      try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
-        const tables = doc.querySelectorAll("table");
-
-        for (const table of tables) {
-          let rainColIdx = -1;
-          const headerCells = table.querySelectorAll("tr th");
-          if (headerCells.length > 0) {
-            headerCells.forEach((th, idx) => {
-              const t = th.textContent.replace(/\s/g, "");
-              if (t.includes("降水量") && rainColIdx === -1) rainColIdx = idx;
-            });
-          }
-          if (rainColIdx === -1) rainColIdx = 1;
-
-          const rows = table.querySelectorAll("tr");
-          let count = 0;
-          for (const row of rows) {
-            const cells = row.querySelectorAll("td");
-            if (cells.length <= rainColIdx) continue;
-            const dayText = cells[0].textContent.replace(/\s/g, "");
-            const day = parseInt(dayText, 10);
-            if (isNaN(day) || day < 1 || day > 31) continue;
-            const rawText = cells[rainColIdx].textContent.replace(/\s/g, "");
-            const rainStr = rawText.replace(/[^0-9.]/g, "");
-            const rain = rainStr ? parseFloat(rainStr) : 0.0;
-            try {
-              const d = new Date(year, month - 1, day);
-              if (d.getMonth() !== month - 1) continue;
-              result[toDateStr(d)] = isNaN(rain) ? 0.0 : rain;
-              count++;
-            } catch (_) { }
-          }
-          if (count > 0) break;
-        }
-      } catch (e) {
-        console.warn("HTML解析エラー:", e.message);
-      }
-      return result;
-    }
-
-    // ============================================================
-    // データ取得（気象庁 防災情報XML）— フィードを1回だけ取得して全地域で共有
-    // ============================================================
-    let _warningFeedCache = null; // { gifu_urls, fetchedAt }
-
-    async function fetchGifuWarningUrls() {
-      // 5分以内のキャッシュを再利用
-      if (_warningFeedCache && Date.now() - _warningFeedCache.fetchedAt < 5 * 60 * 1000) {
-        return _warningFeedCache.gifu_urls;
-      }
-      const feedUrl = "https://www.data.jma.go.jp/developer/xml/feed/extra.xml";
-      const feedXml = await fetchViaProxy(feedUrl, 10000);
-      const gifu_urls = [];
-      const entryRe = /<entry[\s\S]*?<\/entry>/g;
-      let em;
-      while ((em = entryRe.exec(feedXml)) !== null) {
-        const block = em[0];
-        if (block.includes("岐阜") && block.includes("警報")) {
-          const hrefM = block.match(/href="([^"]+VPWW5[^"]+)"/);
-          if (hrefM && !gifu_urls.includes(hrefM[1])) {
-            gifu_urls.push(hrefM[1]);
-            if (gifu_urls.length >= 3) break;  // 最新3件で十分
-          }
-        }
-      }
-      _warningFeedCache = { gifu_urls, fetchedAt: Date.now() };
-      return gifu_urls;
-    }
-
-    // 電文URLリストを並列取得し、各エリアコードに一致する電文を返す
-    async function fetchWarnings(area_name, area_code) {
-      try {
-        const gifu_urls = await fetchGifuWarningUrls();
-        if (!gifu_urls.length) {
-          return { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [] };
-        }
-
-        // 全電文を並列取得
-        const results = await Promise.allSettled(
-          gifu_urls.map(async xmlUrl => {
-            const wXml = await fetchViaProxy(xmlUrl, 10000);
-            return parseWarningXml(wXml, area_code);
-          })
-        );
-
-        // 対象エリアが見つかった最初の結果を採用
-        for (const r of results) {
-          if (r.status === "fulfilled" && r.value && r.value._areaFound) {
-            return r.value;
-          }
-        }
-      } catch (e) {
-        console.warn("警報取得失敗:", e.message);
-      }
-      return { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [] };
-    }
-
-    function parseWarningXml(xml, area_code) {
-      try {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(xml, "text/xml");
-        if (doc.querySelector("parsererror")) return null;
-
-        let reportDt = "";
-        const rdEl = doc.querySelector("ReportDateTime");
-        if (rdEl) reportDt = rdEl.textContent;
-
-        const result = { kanso: false, kyofu: false, kanso_time: null, kyofu_time: null, all: [], report_dt: reportDt, _areaFound: false };
-
-        const items = doc.querySelectorAll("Item");
-        items.forEach(item => {
-          let hasArea = false;
-          item.querySelectorAll("Area").forEach(area => {
-            if (area.textContent.includes(area_code)) hasArea = true;
-          });
-          if (!hasArea) {
-            item.querySelectorAll("Code").forEach(code => {
-              if (code.textContent.trim() === area_code) hasArea = true;
-            });
-          }
-          if (!hasArea) return;
-
-          result._areaFound = true;
-
-          item.querySelectorAll("Kind").forEach(kind => {
-            const nameEl = kind.querySelector("Name");
-            if (!nameEl) return;
-            const name = nameEl.textContent.trim();
-            if (!name) return;
-            if (!result.all.includes(name)) result.all.push(name);
-            if (name.includes("乾燥")) { result.kanso = true; result.kanso_time = reportDt; }
-            if (name.includes("強風") || name.includes("暴風")) { result.kyofu = true; result.kyofu_time = reportDt; }
-          });
-        });
-
-        if (!result._areaFound) {
-          doc.querySelectorAll("Code").forEach(code => {
-            if (code.textContent.trim() === area_code) result._areaFound = true;
-          });
-        }
-
-        return result;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    // ============================================================
-    // 判定
-    // ============================================================
-    function judge(rain3, rain30, kanso, kyofu) {
-      const c1 = rain3 <= 1.0 && rain30 <= 30.0;
-      const c2 = rain3 <= 1.0 && kanso;
-      if (!c1 && !c2) return "発令なし";
-      if (kyofu) return "警報";
-      return "注意報";
-    }
-
-    // ============================================================
-    // DOM描画
-    // ============================================================
-    function renderLoadingCard(name, note = "") {
-      const bars = Array.from({ length: 30 }, (_, i) =>
-        `<div class="loading-bar" style="height:${20 + Math.random() * 55}%;animation-delay:${i * 0.04}s"></div>`
-      ).join("");
-      return `
-  <div class="area-card" id="card-${name.replace(/\s/g, '')}">
-    <div class="card-head">
-      <div>
-        <div class="card-area-label">観測地点</div>
-        <div class="card-area-name">${name}</div>
-        ${note ? `<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px;">${note}</div>` : ""}
-      </div>
-    </div>
-    <div class="loading-text">データ取得中...</div>
-    <div class="loading-bars">${bars}</div>
-  </div>`;
-    }
-
-    function renderCard(name, days, rain3, rain30, warnings, verdict, note = "") {
-      const vc = verdict === "警報" ? "warn" : verdict === "注意報" ? "chui" : "none";
-      const vLabel = verdict === "発令なし" ? "発令なし" : `林野火災${verdict}`;
-
-      const r3Alert = rain3 <= 1.0;
+      const r3Alert  = rain3  <= 1.0;
       const r30Alert = rain30 <= 30.0;
+
       const statBoxes = `
-    <div class="stat-box ${r3Alert ? 'alert-rain' : ''}">
-      <div class="stat-label">前3日合計</div>
-      <div class="stat-value ${r3Alert ? 'rain-val' : ''}">${rain3.toFixed(1)} mm</div>
-    </div>
-    <div class="stat-box ${r30Alert ? 'alert-rain' : ''}">
-      <div class="stat-label">前30日合計</div>
-      <div class="stat-value ${r30Alert ? 'rain-val' : ''}">${rain30.toFixed(1)} mm</div>
-    </div>
-    <div class="stat-box ${warnings.kanso ? 'alert-kanso' : ''}">
-      <div class="stat-label">乾燥注意報</div>
-      <div class="stat-value ${warnings.kanso ? 'kanso-val' : ''}">${warnings.kanso ? '発表中' : 'なし'}</div>
-    </div>
-    <div class="stat-box ${warnings.kyofu ? 'alert-kyofu' : ''}">
-      <div class="stat-label">強風注意報</div>
-      <div class="stat-value ${warnings.kyofu ? 'kyofu-val' : ''}">${warnings.kyofu ? '発表中' : 'なし'}</div>
-    </div>`;
+        <div class="stat-box ${r3Alert?'alert-rain':''}">
+          <div class="stat-label">前3日合計</div>
+          <div class="stat-value ${r3Alert?'rain-val':''}">${rain3.toFixed(1)} mm</div>
+        </div>
+        <div class="stat-box ${r30Alert?'alert-rain':''}">
+          <div class="stat-label">前30日合計</div>
+          <div class="stat-value ${r30Alert?'rain-val':''}">${rain30.toFixed(1)} mm</div>
+        </div>
+        <div class="stat-box ${kanso?'alert-kanso':''}">
+          <div class="stat-label">乾燥注意報</div>
+          <div class="stat-value ${kanso?'kanso-val':''}">${kanso?'発表中':'なし'}</div>
+        </div>
+        <div class="stat-box ${kyofu?'alert-kyofu':''}">
+          <div class="stat-label">強風注意報</div>
+          <div class="stat-value ${kyofu?'kyofu-val':''}">${kyofu?'発表中':'なし'}</div>
+        </div>`;
 
-      const maxRain = Math.max(...days.map(d => d.rain || 0), 5);
-      const bars = days.map((d, i) => {
-        const isRecent = i >= days.length - 3;
-        const h = maxRain > 0 ? ((d.rain || 0) / maxRain * 72) : 0;
-        const dispH = Math.max(h, (d.rain || 0) > 0 ? 3 : 1);
-        const bg = getRainColor(d.rain, isRecent);
-        const opacity = (d.rain || 0) === 0 ? 0.25 : 1;
-        return `<div class="bar-col"><div class="bar" style="height:${dispH}px;background:${bg};opacity:${opacity};animation-delay:${i * 0.015}s" title="${d.dateStr}: ${d.rain ?? 0}mm"></div></div>`;
-      }).join("");
+      // 日別降水量（GASが保存したJSON）
+      const dailyRain = safeJSON(r['dailyRainJSON'], []);
+      const chartHtml = buildRainChart(nm, dailyRain, kanso, kyofu);
 
-      const tableRows = [...days].reverse().map(d => {
-        const rainClass = (d.rain || 0) > 0 ? 'td-rain-val' : 'td-rain-zero';
-        const kansoCell = warnings.kanso && d.dateStr === days[days.length - 1].dateStr
-          ? `<span class="badge-kanso">発表中</span>` : `<span class="badge-none">―</span>`;
-        const kyofuCell = warnings.kyofu && d.dateStr === days[days.length - 1].dateStr
-          ? `<span class="badge-kyofu">発表中</span>` : `<span class="badge-none">―</span>`;
-        return `<tr>
-      <td>${d.dateStr}</td>
-      <td class="${rainClass}">${(d.rain !== null && d.rain !== undefined) ? d.rain.toFixed(1) : '-'}</td>
-      <td>${kansoCell}</td>
-      <td>${kyofuCell}</td>
-    </tr>`;
-      }).join("");
+      const warnTagsHtml = warnAll && warnAll !== 'なし'
+        ? `<div class="warn-list"><div class="warn-list-label">現在発表中の警報・注意報</div>
+           <div class="warn-tags">${warnAll.split('・').map(w=>`<span class="warn-tag">${w}</span>`).join('')}</div></div>`
+        : `<div class="warn-list"><div class="warn-list-label" style="color:var(--muted);">現在、発表中の警報・注意報はありません</div></div>`;
 
-      const warnTags = warnings.all && warnings.all.length > 0
-        ? `<div class="warn-list">
-        <div class="warn-list-label">現在発表中の警報・注意報</div>
-        <div class="warn-tags">${warnings.all.map(w => `<span class="warn-tag">${w}</span>`).join('')}</div>
-       </div>`
-        : '';
+      const verdictBadgeHtml = verdict !== '発令なし'
+        ? `<div class="verdict-badge ${vc}" style="display:inline-block;">林野火災${verdict}</div>`
+        : `<div class="verdict-badge none" style="display:inline-block;">発令なし</div>`;
 
-      const nm = name.replace(/\s/g, '');
-      return `
-  <div class="area-card verdict-${vc}" id="card-${nm}">
-    <div class="card-head">
-      <div>
-        <div class="card-area-label">観測地点</div>
-        <div class="card-area-name">${name}</div>
-        ${note ? `<div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px;">${note}</div>` : ""}
-      </div>
-      <div class="verdict-badge ${vc}">${vLabel}</div>
-    </div>
-    <div class="stat-row">${statBoxes}</div>
-    <div class="chart-label">前30日間の日別降水量　最大: ${maxRain.toFixed(1)}mm</div>
-    <div class="chart-wrap">${bars}</div>
-    <div class="chart-axis">
-      <span class="axis-label">${days[0]?.dateStr?.slice(5)}</span>
-      <span class="axis-label">${days[days.length - 1]?.dateStr?.slice(5)}</span>
-    </div>
-    <button class="toggle-btn" onclick="toggleDetail('${nm}')">▼ 日別詳細テーブルを開く</button>
-    <div id="detail-${nm}" style="display:none">
-      <div class="detail-wrap">
-        <table class="detail-table">
-          <thead>
-            <tr>
-              <th>日付</th><th>降水量(mm)</th><th>乾燥注意報</th><th>強風注意報</th>
-            </tr>
-          </thead>
-          <tbody id="tbody-${nm}">${tableRows}</tbody>
-        </table>
-      </div>
-    </div>
-    ${warnTags}
-  </div>`;
+      return `<div class="area-panel" id="panel-forest-${nm}" data-verdict="${vc}">
+        <div class="panel-area-header" style="border-left:4px solid #22c55e;">
+          <div>
+            <div class="panel-area-name">${name}</div>
+            ${note?`<div style="font-size:10px;color:var(--muted);font-family:monospace;margin-top:1px;">${note}</div>`:''}
+          </div>
+          ${verdictBadgeHtml}
+        </div>
+        <div class="stat-row">${statBoxes}</div>
+        ${chartHtml}
+        <div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:10px;">
+          📡 GAS記録（10分ごと更新）　${updatedAt}
+        </div>
+        ${warnTagsHtml}
+      </div>`;
     }
 
-    function toggleDetail(nm) {
-      const el = document.getElementById(`detail-${nm}`);
-      const btn = el.previousElementSibling;
-      if (el.style.display === 'none') {
-        el.style.display = 'block';
-        btn.textContent = '▲ 日別詳細テーブルを閉じる';
-      } else {
-        el.style.display = 'none';
-        btn.textContent = '▼ 日別詳細テーブルを開く';
+    function buildRainChart(nm, dailyRain, kanso, kyofu) {
+      if (!dailyRain || dailyRain.length === 0) {
+        return `<div style="color:var(--muted);font-size:12px;font-family:monospace;margin:8px 0;">降水量データなし</div>`;
+      }
+      const maxRain = Math.max(...dailyRain.map(d=>d.rain||0), 5);
+      const bars = dailyRain.map((d,i) => {
+        const isRecent = i >= dailyRain.length - 3;
+        const h = maxRain > 0 ? ((d.rain||0)/maxRain*72) : 0;
+        const dispH = Math.max(h, (d.rain||0)>0?3:1);
+        const bg = getRainColor(d.rain, isRecent);
+        const opacity = (d.rain||0)===0?0.25:1;
+        return `<div class="bar-col"><div class="bar" style="height:${dispH}px;background:${bg};opacity:${opacity};animation-delay:${i*0.015}s" title="${d.dateStr}: ${d.rain??0}mm"></div></div>`;
+      }).join('');
+
+      const tableRows = [...dailyRain].reverse().map(d => {
+        const rainClass = (d.rain||0)>0?'td-rain-val':'td-rain-zero';
+        const isLatest  = d.dateStr === dailyRain[dailyRain.length-1]?.dateStr;
+        const kansoCell = kanso && isLatest ? `<span class="badge-kanso">発表中</span>` : `<span class="badge-none">―</span>`;
+        const kyofuCell = kyofu && isLatest ? `<span class="badge-kyofu">発表中</span>` : `<span class="badge-none">―</span>`;
+        return `<tr>
+          <td>${d.dateStr}</td>
+          <td class="${rainClass}">${d.rain!=null?Number(d.rain).toFixed(1):'-'}</td>
+          <td>${kansoCell}</td><td>${kyofuCell}</td>
+        </tr>`;
+      }).join('');
+
+      return `
+        <div class="chart-label">前30日間の日別降水量　最大: ${maxRain.toFixed(1)}mm</div>
+        <div class="chart-wrap">${bars}</div>
+        <div class="chart-axis">
+          <span class="axis-label">${dailyRain[0]?.dateStr?.slice(5)}</span>
+          <span class="axis-label">${dailyRain[dailyRain.length-1]?.dateStr?.slice(5)}</span>
+        </div>
+        <button class="toggle-btn" onclick="toggleDetail('forest-${nm}')">▼ 日別詳細テーブルを開く</button>
+        <div id="detail-forest-${nm}" style="display:none">
+          <div class="detail-wrap">
+            <table class="detail-table">
+              <thead><tr><th>日付</th><th>降水量(mm)</th><th>乾燥注意報</th><th>強風注意報</th></tr></thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    // ============================================================
+    // 火災警報パネル描画
+    // ============================================================
+    function renderFirePanel(r) {
+      const name = r['市町名'] || '';
+      const nm   = name.replace(/\s/g,'');
+      const fr   = r['火災警報判定'] || '—';
+      const reached = fr === '基準到達';
+      const fcol = reached ? 'var(--warn)' : (fr==='判定不可'?'var(--muted)':'#22c55e');
+      const note     = r['観測地点'] || '';
+      const updatedAt= r['更新日時']  || '';
+      const obsTime  = normalizeObsTime(r['観測時刻']);
+      const status   = r['取得状態'] || '';
+      const diag     = r['診断']     || '';
+      const reason   = r['判定理由'] || '';
+
+      const nv = v => { const n=Number(v); return (v===''||v==null||isNaN(n))?null:n; };
+      const effHum    = nv(r['実効湿度%']);
+      const minHum    = nv(r['最小湿度%']);
+      const windMax   = nv(r['最大風速m/s']);
+      const wind10m   = nv(r['最新10分風速m/s']);
+      const rainToday = nv(r['当日降水量mm']);
+      const streak10  = nv(r['10m/s連続回数']) ?? 0;
+      const streak12  = nv(r['12m/s連続回数']) ?? 0;
+
+      // GASが保存したJSON詳細
+      const wind10minHistory = safeJSON(r['wind10minHistoryJSON'], []);
+      const effSteps         = safeJSON(r['effStepsJSON'], []);
+      const forecastSlots    = safeJSON(r['forecastSlotsJSON'], []);
+      const forecastMaxWind  = nv(r['予報最大風速m/s']);
+      const forecastReportDt = r['予報最大発表時刻'] || '';
+
+      const cfg = STATIONS[name] || {};
+
+      const fmt = (v, unit) => v==null ? '欠測' : v+unit;
+      const badge = (label, color) => `<span style="margin-left:6px;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;background:${color}20;border:1px solid ${color};color:${color};font-family:monospace;">${label}</span>`;
+      const effBadge  = effHum !=null&&effHum <=60 ? badge('基準①','#f97316') : '';
+      const minBadge  = minHum !=null&&minHum <=40 ? badge('基準①','#f97316') : '';
+      const windBadge = windMax!=null&&windMax>=12  ? badge('基準②','#ef4444')+badge('基準①','#f97316')
+                      : windMax!=null&&windMax>=10  ? badge('基準①','#f97316') : '';
+      const rainBadge = rainToday!=null&&rainToday>0 ? badge('除外条件（降雨）','#64748b') : '';
+
+      const verdictBadgeHtml = reached
+        ? `<div class="verdict-badge warn" style="display:inline-block;">気象条件　基準到達</div>`
+        : `<div class="verdict-badge none" style="display:inline-block;${fr!=='判定不可'?'color:#22c55e;border-color:#22c55e;':''}">気象条件　${fr}</div>`;
+
+      // 連続超過バナー
+      const streakBanner = buildStreakBanner(streak10, streak12);
+
+      // 実効湿度行（計算根拠折りたたみ）
+      const effDetail = buildEffDetail(nm, effSteps);
+
+      // 10分履歴行（折りたたみ）
+      const wind10Row = buildWind10Row(nm, wind10m, obsTime, wind10minHistory, cfg.amedas_name||'');
+
+      // 予報スロット行（折りたたみ）
+      const forecastRow = buildForecastRow(nm, forecastMaxWind, forecastReportDt, forecastSlots);
+
+      // 除外条件
+      const excludeRain  = rainToday!=null&&rainToday>0;
+      const excludeHumid = effHum!=null&&minHum!=null&&effHum>=70&&minHum>=50;
+      const exclRowStyle = hit => `display:grid;grid-template-columns:1fr auto;align-items:center;background:#1a1f2e;border-radius:5px;padding:5px 10px;border-left:3px solid ${hit?'#22c55e':'#ef4444'};`;
+      const exclChip = hit => hit
+        ? `<span style="font-size:10px;font-weight:700;color:#22c55e;font-family:monospace;">✓ 該当（発令対象外）</span>`
+        : `<span style="font-size:10px;font-weight:700;color:#ef4444;font-family:monospace;">✗ 非該当（発令対象）</span>`;
+
+      const hourStr = obsTime ? obsTime.slice(0,2)+':00' : '—';
+
+      return `<div class="area-panel" id="panel-fire-${nm}" data-reached="${reached}">
+        <div class="panel-area-header" style="border-left:4px solid #f97316;">
+          <div>
+            <div class="panel-area-name">${name}</div>
+            ${note?`<div style="font-size:10px;color:var(--muted);font-family:monospace;margin-top:1px;">${note}</div>`:''}
+          </div>
+          ${verdictBadgeHtml}
+        </div>
+        <div class="warn-list" style="border-color:${fcol};margin-top:0;">
+          ${streakBanner}
+          <div style="margin:8px 0 4px;display:grid;grid-template-columns:1fr;gap:5px;">
+            <!-- 実効湿度 -->
+            <div style="display:grid;grid-template-columns:9em 1fr;align-items:start;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
+              <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">🌫 実効湿度</span>
+              <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">${fmt(effHum,'%')}${effBadge}</span>
+              <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">前日までETRN＋当日アメダス平均湿度
+                <button onclick="toggleEffHum('${nm}')" class="eff-calc-btn" id="effbtn-${nm}">▼ 計算根拠</button>
+              </span>
+              <div id="effdetail-${nm}" style="display:none;grid-column:1/-1;margin-top:6px;background:#0f1320;border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:11px;line-height:1.8;">
+                ${effDetail}
+              </div>
+            </div>
+            <!-- 最小湿度 -->
+            <div style="display:grid;grid-template-columns:9em 1fr;align-items:center;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
+              <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">💧 最小湿度</span>
+              <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">${fmt(minHum,'%')}${minBadge}</span>
+              <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">当日0:00〜${obsTime}の1時間値最小（観測地点：${note}）</span>
+            </div>
+            <!-- 最大風速 -->
+            <div style="display:grid;grid-template-columns:9em 1fr;align-items:center;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
+              <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">💨 最大風速</span>
+              <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">${fmt(windMax,'m/s')}${windBadge}</span>
+              <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">1時間値最大 ${fmt(windMax,'m/s')} ／ 最新10分値 ${fmt(wind10m,'m/s')} → 大きい方を判定に使用（観測地点：${note}）</span>
+            </div>
+            <!-- 最新風速（10分履歴） -->
+            ${wind10Row}
+            <!-- 風速予報 -->
+            ${forecastRow}
+            <!-- 当日降水 -->
+            <div style="display:grid;grid-template-columns:9em 1fr;align-items:center;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
+              <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">🌧 当日降水</span>
+              <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">${fmt(rainToday,'mm')}${rainBadge}</span>
+              <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">当日0:00〜${hourStr}の累積（前1時間降水量の合計。直前の端数時間は含まず）</span>
+            </div>
+          </div>
+          <!-- 除外条件チェック -->
+          <div style="margin:8px 0 4px;padding:10px 12px;background:#0f1320;border:1.5px solid #334155;border-radius:8px;">
+            <div style="font-size:11px;color:#AEB7C2;font-family:monospace;margin-bottom:7px;font-weight:700;">🚫 除外条件チェック（基準②のみ適用。いずれか該当で基準②は発令対象外）</div>
+            <div style="display:grid;grid-template-columns:1fr;gap:4px;">
+              <div style="${exclRowStyle(excludeRain)}">
+                <span style="font-size:11px;color:#AEB7C2;font-family:monospace;">降雨・降雪${excludeRain?`あり（当日降水 ${rainToday}mm）`:`なし（当日降水 ${rainToday!=null?rainToday+'mm':'—'}）`}</span>
+                ${exclChip(excludeRain)}
+              </div>
+              <div style="${exclRowStyle(excludeHumid)}">
+                <span style="font-size:11px;color:#AEB7C2;font-family:monospace;">実効湿度70%以上 かつ 最小湿度50%以上${excludeHumid?'':' に非該当'}（実効湿度 ${effHum!=null?effHum+'%':'—'} / 最小湿度 ${minHum!=null?minHum+'%':'—'}）</span>
+                ${exclChip(excludeHumid)}
+              </div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);font-family:monospace;margin-top:4px;padding-top:6px;border-top:1px solid var(--border);">${reason}</div>
+          <div style="font-size:11px;font-family:monospace;margin-top:6px;padding-top:5px;border-top:1px solid var(--border);line-height:1.9;color:var(--sub);">
+            <span style="color:${status==='正常'?'#22c55e':'var(--chui)'};">${status==='正常'?'● リアルタイム実況':'△ 一部取得失敗'}</span>　
+            🕐 取得時刻：<strong style="color:var(--text);">${updatedAt}</strong>現在
+            ${diag?`<div style="margin-top:2px;color:var(--muted);font-size:10px;word-break:break-all;">🔧 診断: ${diag}</div>`:''}
+          </div>
+          ${reached?`<div style="margin-top:6px;color:var(--warn);font-weight:700;">⚠ 発令には消防長の判断が必要です（本判定は気象条件の充足を示すものです）</div>`:''}
+        </div>
+      </div>`;
+    }
+
+    // ============================================================
+    // パーツビルダー
+    // ============================================================
+    function buildStreakBanner(s10, s12) {
+      if (s12>=4) return `<div style="margin:6px 0 2px;padding:8px 12px;background:#7f1d1d;border:1.5px solid var(--warn);border-radius:7px;color:#fca5a5;font-size:12px;font-weight:700;font-family:monospace;line-height:1.6;">🚨 風速12m/s以上が<strong>${s12}回連続（${s12*10}分以上）</strong>継続中<br>基準②への該当が持続しています。<span style="color:#fff;">発令を強く検討してください。</span></div>`;
+      if (s12>=2) return `<div style="margin:6px 0 2px;padding:8px 12px;background:#451a03;border:1.5px solid var(--chui);border-radius:7px;color:#fde68a;font-size:12px;font-weight:700;font-family:monospace;line-height:1.6;">⚠ 風速12m/s以上が<strong>${s12}回連続</strong>継続中<br>基準②への該当。継続状況を注視してください。</div>`;
+      if (s12===1) return `<div style="margin:6px 0 2px;padding:6px 12px;background:#292524;border:1px solid #ef4444;border-radius:7px;color:#fca5a5;font-size:11px;font-family:monospace;">📌 風速12m/s以上を初検出（基準②）。継続するか経過観察が必要です。</div>`;
+      if (s10>=4) return `<div style="margin:6px 0 2px;padding:8px 12px;background:#422006;border:1.5px solid #f97316;border-radius:7px;color:#fdba74;font-size:12px;font-weight:700;font-family:monospace;line-height:1.6;">🔥 風速10m/s以上が<strong>${s10}回連続（${s10*10}分以上）</strong>継続中<br>基準①への該当が持続しています。<span style="color:#fff;">発令を強く検討してください。</span></div>`;
+      if (s10>=2) return `<div style="margin:6px 0 2px;padding:8px 12px;background:#1c1917;border:1.5px solid #78716c;border-radius:7px;color:#d6d3d1;font-size:12px;font-weight:700;font-family:monospace;line-height:1.6;">📊 風速10m/s以上が<strong>${s10}回連続</strong>継続中<br>基準①への該当。継続状況を監視してください。</div>`;
+      if (s10===1) return `<div style="margin:6px 0 2px;padding:6px 12px;background:#1c1917;border:1px solid #78716c;border-radius:7px;color:#a8a29e;font-size:11px;font-family:monospace;">📌 風速10m/s以上を初検出（基準①）。継続するか経過観察が必要です。</div>`;
+      return '';
+    }
+
+    function buildEffDetail(nm, effSteps) {
+      if (!effSteps || effSteps.length === 0) return '<span style="color:var(--muted);">データなし</span>';
+      const rows = [...effSteps].reverse().map((s,i) => {
+        const isLast = i===0;
+        const rowStyle = isLast?'color:var(--text);font-weight:700;background:#1a1f2e;':'color:var(--sub);';
+        const todayMark = s.isToday?'　<span style="color:var(--accent);font-size:9px;">アメダス実況</span>':'';
+        const dateLabel = (s.dateStr||'').replace(/^\d{4}\//,'');
+        let formula = '—';
+        if (s.prevHe===null&&s.humAvg!==null) formula=`初期値 = ${s.humAvg}`;
+        else if (s.skipped) formula=`欠測（前日値引継）`;
+        else if (s.prevHe!=null&&s.humAvg!=null) formula=`0.3×${s.humAvg} + 0.7×${s.prevHe}`;
+        return `<tr style="${rowStyle}">
+          <td style="padding:2px 6px;">${dateLabel}${todayMark}</td>
+          <td style="text-align:right;padding:2px 6px;">${s.humAvg!=null?s.humAvg+'%':'<span style="color:var(--warn);">欠測</span>'}</td>
+          <td style="text-align:right;padding:2px 6px;">${s.prevHe!=null?s.prevHe+'%':'—'}</td>
+          <td style="text-align:right;padding:2px 6px;${isLast?'color:var(--accent);':''}">${s.newHe!=null?s.newHe+'%':'—'}</td>
+          <td style="padding:2px 6px;color:var(--muted);">${formula}</td>
+        </tr>`;
+      }).join('');
+      return `<div style="color:var(--accent);font-weight:700;margin-bottom:6px;">📐 実効湿度 計算式</div>
+        <div style="color:var(--sub);margin-bottom:8px;font-family:monospace;">
+          Hₑ(n) = 0.3 × H(n) + 0.7 × Hₑ(n-1)<br>
+          <span style="color:var(--muted);font-size:10px;">H(n)：当日平均湿度　Hₑ(n-1)：前日実効湿度　（減衰定数 r = 0.7）</span>
+        </div>
+        <div style="color:var(--accent);font-weight:700;margin-bottom:4px;">📋 直近ステップ（最大10日分）</div>
+        <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:10px;">
+          <thead><tr style="color:var(--muted);border-bottom:1px solid var(--border);">
+            <th style="text-align:left;padding:2px 6px;">日付</th>
+            <th style="text-align:right;padding:2px 6px;">平均湿度 H(n)</th>
+            <th style="text-align:right;padding:2px 6px;">前日Hₑ</th>
+            <th style="text-align:right;padding:2px 6px;">→ 実効湿度</th>
+            <th style="text-align:left;padding:2px 6px;">計算式</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:6px;color:var(--muted);font-size:10px;">※ 最大30日分のETRNデータ＋当日アメダス実況から計算。直近10ステップのみ表示。</div>`;
+    }
+
+    function buildWind10Row(nm, wind10m, obsTime, history, amedasName) {
+      const id = `wind10hist-detail-${nm}`;
+      const latestVal  = history.length>0 ? history[0].wind : wind10m;
+      const latestTime = history.length>0 ? history[0].timeLabel : obsTime;
+      const histRows = history.slice(0,6).map(h => {
+        const e12=h.wind!=null&&h.wind>=12, e10=h.wind!=null&&h.wind>=10;
+        const col=e12?'#ef4444':e10?'#f97316':'var(--sub)';
+        return `<tr>
+          <td style="font-family:monospace;padding:1px 6px;color:var(--muted);">${h.timeLabel}</td>
+          <td style="font-family:monospace;padding:1px 6px;color:${col};font-weight:${e10?'700':'400'};">${h.wind!=null?h.wind+' m/s':'—'}</td>
+          <td style="font-family:monospace;padding:1px 6px;font-size:9px;color:${col};">${e12?'●第2号':e10?'●第1号':''}</td>
+        </tr>`;
+      }).join('');
+      const histBlock = history.length>0
+        ? `<div style="margin-top:4px;"><button onclick="toggleSubDetail('${id}')" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:10px;font-family:monospace;padding:2px 8px;border-radius:4px;cursor:pointer;" id="btn-${id}">▼ 直近の履歴（新しい順）</button><div id="${id}" style="display:none;margin-top:4px;"><table style="border-collapse:collapse;font-size:11px;">${histRows}</table></div></div>`
+        : '';
+      return `<div style="display:grid;grid-template-columns:9em 1fr;align-items:start;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
+        <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">💨 最新風速<br><span style="font-size:9px;color:var(--muted);">(10分平均)</span></span>
+        <div>
+          <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;">${latestVal!=null?latestVal+' m/s':'—'}</span>
+          <span style="color:#AEB7C2;font-size:10px;display:block;margin-top:2px;">${latestTime?latestTime+'の10分平均（観測地点：'+amedasName+'）':'—'}</span>
+          ${histBlock}
+        </div>
+      </div>`;
+    }
+
+    function buildForecastRow(nm, maxWind, reportDt, slots) {
+      const id = `fcslot-detail-${nm}`;
+      const maxLabel = maxWind!=null
+        ? `<span style="font-size:10px;color:var(--muted);">予報最大: <strong style="color:${maxWind>=12?'#ef4444':maxWind>=10?'#f97316':'var(--sub)'};">${maxWind} m/s</strong></span>`
+        : '';
+      const rdtLabel = (() => {
+        if (!reportDt) return '';
+        const d = new Date(reportDt);
+        if (isNaN(d.getTime())) return `<span style="font-size:10px;color:var(--muted);margin-left:8px;">${reportDt}</span>`;
+        return `<span style="font-size:10px;color:var(--muted);margin-left:8px;">${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}発表</span>`;
+      })();
+      const slotRows = slots.slice(0,8).map(s => {
+        const e12=s.wind!=null&&s.wind>=12, e10=s.wind!=null&&s.wind>=10;
+        const col=e12?'#ef4444':e10?'#f97316':'var(--sub)';
+        return `<tr>
+          <td style="font-family:monospace;padding:1px 6px;color:var(--muted);font-size:11px;">${s.timeLabel}</td>
+          <td style="font-family:monospace;padding:1px 6px;color:${col};font-weight:${e10?'700':'400'};font-size:12px;">${s.wind!=null?s.wind+' m/s':'—'}</td>
+          <td style="font-family:monospace;padding:1px 6px;font-size:9px;color:${col};">${e12?'●第2号':e10?'●第1号':''}</td>
+        </tr>`;
+      }).join('');
+      const slotBlock = slots.length>0
+        ? `<div style="margin-top:4px;"><button onclick="toggleSubDetail('${id}')" style="background:none;border:1px solid var(--border);color:var(--muted);font-size:10px;font-family:monospace;padding:2px 8px;border-radius:4px;cursor:pointer;" id="btn-${id}">▼ 3時間別予報を見る</button><div id="${id}" style="display:none;margin-top:4px;"><table style="border-collapse:collapse;">${slotRows}</table></div></div>`
+        : '<span style="color:var(--muted);font-size:12px;">—</span>';
+      return `<div style="display:grid;grid-template-columns:9em 1fr;align-items:start;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:4px;">
+        <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">🔭 風速予報</span>
+        <div>
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${maxLabel}${rdtLabel}</div>
+          ${slotBlock}
+        </div>
+      </div>`;
+    }
+
+    // ============================================================
+    // セクション見出し更新
+    // ============================================================
+    function updateSectionVerdicts() {
+      const names = Object.keys(STATIONS);
+      // 林野火災
+      const forestWarn  = names.filter(n => document.getElementById(`panel-forest-${n.replace(/\s/g,'')}`)?.dataset.verdict==='warn');
+      const forestChui  = names.filter(n => document.getElementById(`panel-forest-${n.replace(/\s/g,'')}`)?.dataset.verdict==='chui');
+      const fvEl = document.getElementById('forestVerdict');
+      if (fvEl) {
+        if (forestWarn.length>0)      fvEl.innerHTML=`<span class="svd-warn">⚠ ${forestWarn.join('と')}に林野火災警報</span>`;
+        else if (forestChui.length>0) fvEl.innerHTML=`<span class="svd-chui">⚡ ${forestChui.join('と')}に林野火災注意報</span>`;
+        else                          fvEl.innerHTML=`<span class="svd-none">発令なし</span>`;
+      }
+      // 火災警報
+      const fireReached = names.filter(n => document.getElementById(`panel-fire-${n.replace(/\s/g,'')}`)?.dataset.reached==='true');
+      const fwEl = document.getElementById('fireVerdict');
+      if (fwEl) {
+        if (fireReached.length>0) fwEl.innerHTML=`<span class="svd-reached">🔥 管内全域に発令　<span style="font-size:11px;font-weight:600;opacity:.8;">（${fireReached.join('・')}で気象条件充足）</span></span>`;
+        else                      fwEl.innerHTML=`<span class="svd-ok">発令基準未到達</span>`;
       }
     }
 
     // ============================================================
-    // メイン処理 — 全地域・全月を並列処理
+    // 出典ブロック描画
+    // ============================================================
+    function renderForestSources(rows) {
+      const el = document.getElementById('forestSourcesBlock');
+      if (!el) return;
+      el.innerHTML = rows.map(r => {
+        const name = r['市町名']||'';
+        const cfg  = STATIONS[name];
+        if (!cfg) return '';
+        const now = new Date();
+        const etrnUrl = `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=${cfg.prec_no}&block_no=${cfg.block_no}&year=${now.getFullYear()}&month=${now.getMonth()+1}&day=&view=p1`;
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:12px;font-weight:800;color:var(--text);font-family:monospace;margin-bottom:6px;">${name}</div>
+          <div style="line-height:2;font-size:11px;">
+            📊 降水量（前30日・前3日）：<a href="${etrnUrl}" target="_blank" style="color:var(--accent);text-decoration:none;">気象庁 過去の気象データ（ETRN）↗</a><br>
+            📊 警報・注意報：<a href="https://www.jma.go.jp/bosai/warning/#area_type=offices&area_code=210000" target="_blank" style="color:var(--accent);text-decoration:none;">気象庁 警報・注意報（岐阜県）↗</a>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderFireSources(rows) {
+      const el = document.getElementById('fireSourcesBlock');
+      if (!el) return;
+      el.innerHTML = rows.map(r => {
+        const name = r['市町名']||'';
+        const cfg  = STATIONS[name];
+        if (!cfg) return '';
+        const now = new Date();
+        const etrnUrl   = `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=${cfg.prec_no}&block_no=${cfg.block_no}&year=${now.getFullYear()}&month=${now.getMonth()+1}&day=&view=p1`;
+        const amedasUrl = `https://www.jma.go.jp/bosai/amedas/#area_type=offices&area_code=210000&amdno=${cfg.amedas_no}&format=table1h&elems=53410`;
+        const windRef   = cfg.area_code==='2140400'
+          ? 'https://www.jma.go.jp/bosai/warning/#area_type=class20s&area_code=2140100'
+          : 'https://www.jma.go.jp/bosai/warning/#area_type=class20s&area_code=2120200';
+        const statusColor = r['取得状態']==='正常'?'#22c55e':'var(--chui)';
+        const statusText  = r['取得状態']==='正常'?'● リアルタイム実況':'△ 一部取得失敗';
+        return `<div style="padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:12px;font-weight:800;color:var(--text);font-family:monospace;margin-bottom:6px;">
+            ${name}　<span style="color:${statusColor};font-weight:700;">${statusText}</span>　<span style="color:var(--muted);font-weight:400;">🕐 ${r['更新日時']||''}</span>
+          </div>
+          <div style="line-height:2;font-size:11px;">
+            📊 実効湿度・最小湿度・最大風速：<a href="${amedasUrl}" target="_blank" style="color:var(--accent);text-decoration:none;">気象庁アメダス ${cfg.amedas_name} ↗</a><br>
+            📊 当日降水：<a href="${etrnUrl}" target="_blank" style="color:#22c55e;text-decoration:none;">気象庁ETRN（降水量確認）↗</a><span style="color:var(--muted);font-size:10px;">　※アメダス1時間値累積を判定に使用</span><br>
+            📊 風速予報テキスト：<a href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=210000" target="_blank" style="color:var(--accent);text-decoration:none;">気象庁 岐阜県府県天気予報 ↗</a><br>
+            📊 3時間別最大風速予報：<a href="${windRef}" target="_blank" style="color:#4ade80;text-decoration:none;">3時間別風速数値はこちらで確認 ↗</a>
+          </div>
+          ${r['診断']?`<div style="color:var(--muted);font-size:10px;word-break:break-all;margin-top:2px;">🔧 診断: ${r['診断']}</div>`:''}
+        </div>`;
+      }).join('');
+    }
+
+    // ============================================================
+    // ローディングパネル
+    // ============================================================
+    function renderLoadingPanels() {
+      const names = Object.entries(STATIONS);
+      const lp = (name, note, sfx) => {
+        const bars = Array.from({length:30},(_,i)=>
+          `<div class="loading-bar" style="height:${20+Math.random()*55}%;animation-delay:${i*0.04}s"></div>`
+        ).join('');
+        const col = sfx==='forest'?'#22c55e':'#f97316';
+        return `<div class="area-panel-loading" id="panel-${sfx}-${name.replace(/\s/g,'')}">
+          <div class="panel-area-header" style="border-left:4px solid ${col};">
+            <div><div class="panel-area-name">${name}</div>
+            ${note?`<div style="font-size:10px;color:var(--muted);font-family:monospace;margin-top:1px;">${note}</div>`:''}</div>
+          </div>
+          <div class="loading-text">データ取得中...</div>
+          <div class="loading-bars">${bars}</div>
+        </div>`;
+      };
+      document.getElementById('forestPanels').innerHTML = names.map(([n,c])=>lp(n,c.note||'','forest')).join('');
+      document.getElementById('firePanels').innerHTML   = names.map(([n,c])=>lp(n,c.note||'','fire')).join('');
+    }
+
+    // ============================================================
+    // メイン
     // ============================================================
     async function loadAll() {
       const btn = document.getElementById('refreshBtn');
       btn.disabled = true;
       btn.textContent = '取得中...';
+      renderLoadingPanels();
+      document.getElementById('forestVerdict').innerHTML = '<span class="svd-loading">判定中...</span>';
+      document.getElementById('fireVerdict').innerHTML   = '<span class="svd-loading">判定中...</span>';
 
-      const cardsArea = document.getElementById('cardsArea');
-      cardsArea.innerHTML = Object.entries(STATIONS).map(([n, c]) => renderLoadingCard(n, c.note || "")).join('');
+      try {
+        const gasResult = await loadFromGas();
+        const rows = gasResult.data || [];
+        const updatedStr = gasResult.updated || '—';
 
-      const today = new Date();
-      document.getElementById('headerSub').textContent =
-        `判定基準日: ${toDateStr(today)}　|　最終更新: ${today.toLocaleTimeString('ja-JP')}`;
+        if (rows.length === 0) throw new Error('GASからデータが返りませんでした');
 
-      const dates = getLast30Days();
-      const months = [...new Set(dates.map(d => `${d.year}-${d.month}`))].map(s => {
-        const [y, m] = s.split('-').map(Number);
-        return { year: y, month: m };
-      });
+        document.getElementById('headerSub').textContent =
+          `GAS最終記録: ${updatedStr}　|　表示更新: ${new Date().toLocaleString('ja-JP')}`;
 
-      // 警報フィードを先に1回だけ取得（全地域共通）
-      try { await fetchGifuWarningUrls(); } catch (e) { console.warn("フィード事前取得失敗:", e.message); }
+        document.getElementById('forestPanels').innerHTML = rows.map(renderForestPanel).join('');
+        document.getElementById('firePanels').innerHTML   = rows.map(renderFirePanel).join('');
+        updateSectionVerdicts();
+        renderForestSources(rows);
+        renderFireSources(rows);
 
-      // 全地域を並列処理（Promise.allSettled で一部失敗しても継続）
-      const stationEntries = Object.entries(STATIONS);
-      await Promise.allSettled(stationEntries.map(async ([name, cfg]) => {
-        try {
-          // 各地域の月別降水量を並列取得
-          const rainResults = await Promise.all(
-            months.map(({ year, month }) => fetchRainFromJMA(cfg.prec_no, cfg.block_no, year, month))
-          );
-          const rainByDate = Object.assign({}, ...rainResults);
+      } catch(e) {
+        document.getElementById('headerSub').textContent = `⚠ 取得失敗: ${e.message}`;
+        document.getElementById('forestPanels').innerHTML = `<div style="padding:20px;color:var(--warn);font-family:monospace;">⚠ データ取得失敗: ${e.message}</div>`;
+        document.getElementById('firePanels').innerHTML   = `<div style="padding:20px;color:var(--warn);font-family:monospace;">⚠ データ取得失敗: ${e.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 最新情報に更新';
+      }
+    }
 
-          const days = dates.map(d => ({ ...d, rain: rainByDate[d.dateStr] ?? 0 }));
-          const rain3 = days.slice(-3).reduce((s, d) => s + (d.rain || 0), 0);
-          const rain30 = days.reduce((s, d) => s + (d.rain || 0), 0);
+    // ============================================================
+    // UI操作
+    // ============================================================
+    function toggleCriteria(id) {
+      const body = document.getElementById(id);
+      const icon = document.getElementById(id+'Icon');
+      if (!body||!icon) return;
+      body.style.display = body.style.display==='none' ? 'block' : 'none';
+      icon.textContent   = body.style.display==='none' ? '▼' : '▲';
+    }
 
-          // 降水量と並行して警報取得
-          const warnings = await fetchWarnings(name, cfg.area_code);
+    function toggleDetail(nm) {
+      const el  = document.getElementById(`detail-${nm}`);
+      const btn = el.previousElementSibling;
+      if (el.style.display==='none') { el.style.display='block'; btn.textContent='▲ 日別詳細テーブルを閉じる'; }
+      else                            { el.style.display='none';  btn.textContent='▼ 日別詳細テーブルを開く'; }
+    }
 
-          const verdict = judge(
-            Math.round(rain3 * 10) / 10,
-            Math.round(rain30 * 10) / 10,
-            warnings.kanso, warnings.kyofu
-          );
+    function toggleSubDetail(id) {
+      const el  = document.getElementById(id);
+      const btn = document.getElementById('btn-'+id);
+      if (!el||!btn) return;
+      el.style.display = el.style.display==='none' ? 'block' : 'none';
+      btn.textContent  = btn.textContent.replace(el.style.display==='none'?'▲':'▼', el.style.display==='none'?'▼':'▲');
+    }
 
-          const card = document.getElementById(`card-${name.replace(/\s/g, '')}`);
-          if (card) {
-            card.outerHTML = renderCard(
-              name, days,
-              Math.round(rain3 * 10) / 10,
-              Math.round(rain30 * 10) / 10,
-              warnings, verdict, cfg.note || ""
-            );
-          }
-        } catch (e) {
-          const card = document.getElementById(`card-${name.replace(/\s/g, '')}`);
-          if (card) {
-            card.innerHTML += `<div class="error-msg">⚠ エラー: ${e.message}</div>`;
-          }
-        }
-      }));
+    function toggleEffHum(nm) {
+      const el  = document.getElementById(`effdetail-${nm}`);
+      const btn = document.getElementById(`effbtn-${nm}`);
+      if (!el||!btn) return;
+      if (el.style.display==='none') {
+        el.style.display='block'; btn.textContent='▲ 閉じる';
+        btn.style.color='var(--accent)'; btn.style.borderColor='var(--accent)';
+      } else {
+        el.style.display='none'; btn.textContent='▼ 計算根拠';
+        btn.style.color=''; btn.style.borderColor='';
+      }
+    }
 
-      btn.disabled = false;
-      btn.textContent = '🔄 最新情報に更新';
+    // ============================================================
+    // 判定シミュレーター
+    // ============================================================
+    const SIM_PRESETS = {
+      k1:      {effHum:55,minHum:38,wind:11, fcWind:0, rain:0,  s10:0,s12:0},
+      k2:      {effHum:75,minHum:55,wind:13, fcWind:0, rain:0,  s10:0,s12:0},
+      k1k2:    {effHum:55,minHum:38,wind:13, fcWind:0, rain:0,  s10:0,s12:0},
+      excRain: {effHum:75,minHum:55,wind:13, fcWind:0, rain:2.5,s10:0,s12:0},
+      excHum:  {effHum:75,minHum:55,wind:13, fcWind:0, rain:0,  s10:0,s12:0},
+      none:    {effHum:75,minHum:55,wind:5,  fcWind:0, rain:0,  s10:0,s12:0},
+      str10_1: {effHum:58,minHum:38,wind:10, fcWind:0, rain:0,  s10:1,s12:0},
+      str10_4: {effHum:58,minHum:38,wind:10, fcWind:0, rain:0,  s10:4,s12:0},
+      str12_1: {effHum:75,minHum:55,wind:12, fcWind:0, rain:0,  s10:1,s12:1},
+      str12_4: {effHum:75,minHum:55,wind:12, fcWind:0, rain:0,  s10:4,s12:4},
+    };
+
+    function simPreset(key) {
+      const p = SIM_PRESETS[key]; if (!p) return;
+      document.getElementById('simEffHum').value = p.effHum;
+      document.getElementById('simMinHum').value = p.minHum;
+      document.getElementById('simWind').value   = p.wind;
+      document.getElementById('simFcWind').value = p.fcWind;
+      document.getElementById('simRain').value   = p.rain;
+      document.getElementById('simS10').value    = p.s10;
+      document.getElementById('simS12').value    = p.s12;
+      runSim();
+    }
+
+    function runSim() {
+      const effHum = parseFloat(document.getElementById('simEffHum').value);
+      const minHum = parseFloat(document.getElementById('simMinHum').value);
+      const wind   = parseFloat(document.getElementById('simWind').value);
+      const fcWind = parseFloat(document.getElementById('simFcWind').value)||0;
+      const rain   = parseFloat(document.getElementById('simRain').value);
+      const s10    = parseInt(document.getElementById('simS10').value)||0;
+      const s12    = parseInt(document.getElementById('simS12').value)||0;
+      const el     = document.getElementById('simResult');
+      if (!el) return;
+      if (isNaN(effHum)||isNaN(minHum)||isNaN(wind)||isNaN(rain)) {
+        el.innerHTML='<div style="color:var(--muted);font-size:12px;font-family:monospace;">数値を入力してください</div>';
+        return;
+      }
+      const wind10 = wind>=10||fcWind>=10, wind12 = wind>=12||fcWind>=12;
+      const kijun1 = effHum<=60&&minHum<=40&&wind10, kijun2 = wind12;
+      const excludeRain = rain>0, excludeHumid = effHum>=70&&minHum>=50;
+      const kijun2Valid = kijun2&&!(excludeRain||excludeHumid);
+      const reached = kijun1||kijun2Valid, excluded = kijun2&&!kijun2Valid&&!kijun1;
+
+      const streakBanner = buildStreakBanner(s10, s12);
+      const chk  = v => v?'<span class="sim-flag-val sim-flag-ok">● 該当</span>':'<span class="sim-flag-val sim-flag-ng">― 非該当</span>';
+      const excV = v => v?'<span class="sim-flag-val sim-flag-excl">⚠ 該当（除外）</span>':'<span class="sim-flag-val sim-flag-ng">― 非該当</span>';
+      const num  = (v,u) => `<span style="color:var(--text);font-weight:700;">${v}${u}</span>`;
+
+      let boxClass, verdict, detail;
+      if (reached) {
+        boxClass='sim-result-reached';
+        const bases=[];
+        if (kijun1)      bases.push('<span style="color:#f97316;font-weight:800;">基準①</span>');
+        if (kijun2Valid) bases.push('<span style="color:#f97316;font-weight:800;">基準②</span>');
+        verdict=`<span class="sim-verdict" style="color:var(--warn);">🔥 気象条件　基準到達（${bases.join('・')}）</span>`;
+        detail='発令の気象条件を充足しています。消防長の判断により発令を検討してください。';
+      } else if (excluded) {
+        boxClass='sim-result-excluded';
+        const reasons=[];
+        if (excludeRain)  reasons.push(`<span style="color:var(--chui);">降雨・降雪あり（${rain}mm）</span>`);
+        if (excludeHumid) reasons.push(`<span style="color:var(--chui);">実効湿度≥70% かつ 最小湿度≥50%</span>`);
+        verdict=`<span class="sim-verdict" style="color:var(--chui);">⚠ 基準②に該当　→　除外条件により発令なし</span>`;
+        detail=`除外条件：${reasons.join('、')}`;
+      } else {
+        boxClass='sim-result-none';
+        verdict=`<span class="sim-verdict" style="color:var(--muted);">― 気象条件　基準未到達</span>`;
+        detail='現時点では発令基準に達していません。';
+      }
+
+      el.innerHTML=`${streakBanner}
+        <div class="sim-result-box ${boxClass}">
+          ${verdict}
+          <div style="color:var(--sub);font-size:12px;">${detail}</div>
+          <div class="sim-flag-row">
+            <span class="sim-flag-key">実効湿度 ${num(effHum,'%')}</span>
+            <span>${effHum<=60?'<span class="sim-flag-val sim-flag-ok">● ≤60% 基準①条件充足</span>':'<span class="sim-flag-val sim-flag-ng">― >60% 基準①条件不足</span>'}</span>
+            <span class="sim-flag-key">最小湿度 ${num(minHum,'%')}</span>
+            <span>${minHum<=40?'<span class="sim-flag-val sim-flag-ok">● ≤40% 基準①条件充足</span>':'<span class="sim-flag-val sim-flag-ng">― >40% 基準①条件不足</span>'}</span>
+            <span class="sim-flag-key">実況風速 ${num(wind,'m/s')}</span>
+            <span>${wind>=12?'<span class="sim-flag-val sim-flag-ok">● ≥12m/s 基準①②条件充足</span>':wind>=10?'<span class="sim-flag-val sim-flag-ok">● ≥10m/s 基準①条件充足</span>':'<span class="sim-flag-val sim-flag-ng">― <10m/s</span>'}</span>
+            <span class="sim-flag-key">予報風速 ${num(fcWind,'m/s')}</span>
+            <span>${fcWind>=12?'<span class="sim-flag-val sim-flag-ok">● ≥12m/s 基準①②条件充足</span>':fcWind>=10?'<span class="sim-flag-val sim-flag-ok">● ≥10m/s 基準①条件充足</span>':(fcWind>0?'<span class="sim-flag-val sim-flag-ng">― <10m/s</span>':'<span class="sim-flag-val sim-flag-ng">― 入力なし</span>')}</span>
+            <span class="sim-flag-key">基準①</span><span>${chk(kijun1)}</span>
+            <span class="sim-flag-key">基準②（除外前）</span><span>${chk(kijun2)}</span>
+            <span class="sim-flag-key">除外：降雨 ${num(rain,'mm')}</span><span>${excV(excludeRain)}</span>
+            <span class="sim-flag-key">除外：湿度条件</span><span>${excV(excludeHumid)}</span>
+            <span class="sim-flag-key">基準②（除外後）</span><span>${chk(kijun2Valid)}</span>
+          </div>
+        </div>`;
     }
 
     // ============================================================
     // 起動
     // ============================================================
+    (function() {
+      const month = new Date().getMonth()+1;
+      const el = document.getElementById('forestSectionTitle');
+      if (!el) return;
+      el.innerHTML = month>=1&&month<=5
+        ? '林野火災注意報・警報'
+        : '林野火災注意報・警報<span class="section-block-title-sub" style="color:#fde68a;">参考表示：現在は対象期間外です（対象期間：1月〜5月）</span>';
+    })();
+
+    runSim();
     loadAll();
   </script>
 </body>
-
 </html>
