@@ -956,6 +956,9 @@
       <button id="refreshBtn" onclick="loadAll()">🔄 最新情報に更新</button>
     </div>
 
+    <!-- ステータスサマリー -->
+    <div id="statusSummary"></div>
+
     <!-- 林野火災セクション -->
     <div class="section-block fade-in3" id="forestSection">
       <div class="section-block-header section-block-forest">
@@ -1622,12 +1625,65 @@
     }
 
     // ============================================================
+    // ステータスサマリー（ページ最上部の一覧表示）
+    // ============================================================
+    function renderStatusSummary(rows, updatedStr) {
+      const el = document.getElementById('statusSummary');
+      if (!el || rows.length === 0) return;
+
+      const hasForestWarn  = rows.some(r => r['林野火災判定'] === '警報');
+      const hasForestChui  = rows.some(r => r['林野火災判定'] === '注意報');
+      const hasFireReached = rows.some(r => r['火災警報判定'] === '基準到達');
+      const isAlert = hasForestWarn || hasFireReached;
+      const isChui  = !isAlert && hasForestChui;
+
+      const bgColor     = isAlert ? '#2a0a0a' : isChui ? '#1c1400' : '#0d1a10';
+      const borderColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : '#16a34a';
+      const statusIcon  = isAlert ? '🔴' : isChui ? '🟡' : '🟢';
+      const statusLabel = isAlert ? '警戒が必要な状況です' : isChui ? '注意が必要な状況です' : '現在、発令基準には達していません';
+      const statusColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : '#22c55e';
+
+      const forestRows = rows.map(r => {
+        const v = r['林野火災判定'] || '—';
+        const col = v === '警報' ? 'var(--warn)' : v === '注意報' ? 'var(--chui)' : 'var(--muted)';
+        return `<span><span style="color:var(--sub);">${r['市町名']}</span>：<span style="color:${col};font-weight:700;">${v}</span></span>`;
+      }).join('<span style="color:var(--border);padding:0 8px;">|</span>');
+
+      const fireRows = rows.map(r => {
+        const v = r['火災警報判定'] || '—';
+        const reached = v === '基準到達';
+        const col   = reached ? 'var(--warn)' : 'var(--muted)';
+        const label = reached ? '発令条件を充足' : v === '基準未到達' ? '条件未充足' : v;
+        return `<span><span style="color:var(--sub);">${r['市町名']}</span>：<span style="color:${col};font-weight:700;">${label}</span></span>`;
+      }).join('<span style="color:var(--border);padding:0 8px;">|</span>');
+
+      const alertNote = (isAlert || isChui)
+        ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid ${borderColor};font-size:11px;color:var(--muted);font-family:monospace;">⚠ 発令には消防長の判断が必要です（本判定は気象条件の充足を示すものです）</div>`
+        : '';
+
+      el.innerHTML = `<div style="background:${bgColor};border:2px solid ${borderColor};border-radius:12px;padding:16px 20px;margin-bottom:22px;animation:fadeInUp .4s ease both;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+          <span style="font-size:17px;font-weight:900;color:${statusColor};">${statusIcon}&ensp;${statusLabel}</span>
+          <span style="font-size:11px;color:var(--muted);font-family:monospace;">🕐 最終取得 ${updatedStr}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:center;font-family:monospace;font-size:13px;">
+          <span style="color:var(--sub);white-space:nowrap;font-weight:700;">🌲 林野火災</span>
+          <span style="display:flex;flex-wrap:wrap;gap:10px;">${forestRows}</span>
+          <span style="color:var(--sub);white-space:nowrap;font-weight:700;">🔥 火災警報</span>
+          <span style="display:flex;flex-wrap:wrap;gap:10px;">${fireRows}</span>
+        </div>
+        ${alertNote}
+      </div>`;
+    }
+
+    // ============================================================
     // メイン
     // ============================================================
     async function loadAll() {
       const btn = document.getElementById('refreshBtn');
       btn.disabled = true;
       btn.textContent = '取得中...';
+      document.getElementById('statusSummary').innerHTML = '';
       renderLoadingPanels();
       document.getElementById('forestVerdict').innerHTML = '<span class="svd-loading">判定中...</span>';
       document.getElementById('fireVerdict').innerHTML   = '<span class="svd-loading">判定中...</span>';
@@ -1647,6 +1703,7 @@
         updateSectionVerdicts();
         renderForestSources(rows);
         renderFireSources(rows);
+        renderStatusSummary(rows, updatedStr);
 
       } catch(e) {
         document.getElementById('headerSub').textContent = `⚠ 取得失敗: ${e.message}`;
