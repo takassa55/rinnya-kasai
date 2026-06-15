@@ -941,7 +941,6 @@
       color: var(--rain);
     }
   </style>
-</style>
 </head>
 
 <body>
@@ -1410,7 +1409,7 @@
             🕐 取得時刻：<strong style="color:var(--text);">${updatedAt}</strong>現在
             ${diag?`<div style="margin-top:2px;color:var(--muted);font-size:10px;word-break:break-all;">🔧 診断: ${diag}</div>`:''}
           </div>
-          ${reached?`<div style="margin-top:6px;color:var(--warn);font-weight:700;">⚠ 発令には消防長の判断が必要です（本判定は気象条件の充足を示すものです）</div>`:''}
+          <div style="margin-top:6px;font-size:11px;font-family:monospace;${reached?'color:var(--warn);font-weight:700;':'color:var(--muted);'}">⚠ 発令には消防長の判断が必要です（本判定は気象条件の充足を示すものです）</div>
         </div>
       </div>`;
     }

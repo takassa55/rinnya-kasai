@@ -4,53 +4,56 @@
 
 気象庁の公開データを収集し、岐阜県大垣市・池田町における **林野火災注意報・警報** および **火災警報** の発令気象条件を自動判定するシステム。判定結果に変化があった際は Slack に通知する。
 
+> **重要**: 本システムの判定は気象条件の充足を示すものであり、実際の発令は消防長の判断による。
+
+---
+
+## ファイル構成
+
+**現行ファイルはルート直下の3ファイルのみ。**  
+日付付きフォルダ（`20260501_…` 等）・`bak/`・`ボツ/` は過去バージョンの記録であり、編集対象外。
+
+- `Code.gs` — GAS メインスクリプト（気象データ取得・判定・スプレッドシート記録・Web API）
+- `Code_Slack通知追加分.gs` — Slack 通知のオプション追加コード（`Code.gs` 末尾に追記して使う）
+- `index.html` — ダッシュボード HTML（GAS Web API からデータを取得して描画）
+
 ---
 
 ## アーキテクチャ
 
+データの流れは左から右へ一方向。
+
 ```
-気象庁API (JMA) ──► GAS (Code.gs) ──► Google スプレッドシート
-                         │                        │
-                    10分ごと実行               Web API (doGet)
-                    (時間ベーストリガー)              │
-                                               index.html ──► ブラウザ表示
-                         │
-                    判定変化時
-                         │
-                      Slack (Incoming Webhook)
+[気象庁 API] ──► [GAS: Code.gs] ──► [スプレッドシート]
+                  （10分トリガー）         │
+                       │            [Web API: doGet]
+                  判定変化時               │
+                       ▼            [index.html] ──► ブラウザ表示
+                  [Slack 通知]
 ```
 
-### 構成ファイル
-
-| ファイル | 役割 |
-|---|---|
-| `Code.gs` | GAS メインスクリプト。気象データ取得・判定・スプレッドシート記録・Web API |
-| `Code_Slack通知追加分.gs` | Slack 通知機能（`Code.gs` の末尾に追記して使う） |
-| `index.html` | ダッシュボード HTML（GAS Web API からデータを取得して描画） |
+GAS は JMA からデータを取得・判定してスプレッドシートに保存する役割に専念し、HTML 側は JMA に直接アクセスしない。これにより JMA の CORS 制限を回避している。
 
 ---
 
 ## データソース（気象庁 API）
 
-| データ | URL |
-|---|---|
-| 警報・注意報 JSON | `https://www.jma.go.jp/bosai/warning/data/r8/210000.json` |
-| 警報タイムライン（風速予報） | `https://www.jma.go.jp/bosai/warning_timeline/data/210000.json` |
-| 府県天気予報 | `https://www.jma.go.jp/bosai/forecast/data/forecast/210000.json` |
-| ETRN 過去データ（日別） | `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=…&block_no=…` |
-| アメダスリアルタイム（3時間ブロック） | `https://www.jma.go.jp/bosai/amedas/data/point/{amedas_no}/{yyyyMMdd}_{HH}.json` |
+- **警報・注意報**: `https://www.jma.go.jp/bosai/warning/data/r8/210000.json`
+- **風速予報タイムライン**: `https://www.jma.go.jp/bosai/warning_timeline/data/210000.json`
+- **府県天気予報**: `https://www.jma.go.jp/bosai/forecast/data/forecast/210000.json`
+- **ETRN 日別過去データ**: `https://www.data.jma.go.jp/stats/etrn/view/daily_a1.php?prec_no=…&block_no=…`
+- **アメダスリアルタイム（3時間ブロック）**: `https://www.jma.go.jp/bosai/amedas/data/point/{amedas_no}/{yyyyMMdd}_{HH}.json`
 
 ---
 
 ## 対象地点
 
-| 市町名 | amedas_no | area_code | 観測地点名 |
-|---|---|---|---|
-| 大垣市 | 52581 | 2120200 | 大垣（大垣市禾森町） |
-| 池田町 | 52511 | 2140400 | 揖斐川（揖斐郡揖斐川町三輪） |
+| 市町名 | amedas_no | area_code | ETRN block_no | 観測地点名 |
+|---|---|---|---|---|
+| 大垣市 | 52581 | 2120200 | 0496 | 大垣（大垣市禾森町） |
+| 池田町 | 52511 | 2140400 | 1301 | 揖斐川（揖斐郡揖斐川町三輪） |
 
-- `prec_no=52`（岐阜県）
-- `block_no`: 大垣=0496、池田=1301（ETRN 参照用）
+`prec_no` は両地点とも `52`（岐阜県）。
 
 ---
 
@@ -60,11 +63,11 @@
 
 | 判定 | 条件 |
 |---|---|
-| 注意報 | （前3日降水量 ≤ 1mm かつ 前30日降水量 ≤ 30mm）または（前3日 ≤ 1mm かつ 乾燥注意報発表中） |
+| 注意報 | （前3日 ≤ 1mm かつ 前30日 ≤ 30mm）または（前3日 ≤ 1mm かつ 乾燥注意報発表中） |
 | 警報 | 注意報条件 + 強風注意報（または暴風注意報）発表中 |
 | 発令なし | 上記以外 |
 
-- 対象期間は1〜5月（HTML 側で期間外は参考表示に切り替え）
+対象期間は1〜5月。HTML 側でこの期間以外は「参考表示」に切り替える（判定自体は年中実行）。
 
 ### 火災警報（`fireWarningJudge_`）
 
@@ -73,7 +76,7 @@
 | 基準 | 条件 |
 |---|---|
 | 基準① | 実効湿度 ≤ 60% **かつ** 最小湿度 ≤ 40% **かつ** 風速 ≥ 10m/s（実況または予報） |
-| 基準②  | 風速 ≥ 12m/s（実況または予報） |
+| 基準② | 風速 ≥ 12m/s（実況または予報） |
 
 **除外条件（基準②のみ適用）**：以下いずれか該当で基準②は発令対象外
 - 当日降水量 > 0mm（降雨・降雪あり）
@@ -86,86 +89,71 @@ He(n) = 0.3 × H(n) + 0.7 × He(n-1)
 ```
 
 - 減衰定数 r = 0.7（`CONFIG.EFFECTIVE_HUMIDITY_R`）
-- 前30日分の ETRN 日別平均湿度 + 当日アメダス実況を使用
+- 前30日分の ETRN 日別平均湿度を初期値とし、当日アメダス実況を最終ステップに加える
 
 ---
 
 ## スプレッドシート構造
 
-| シート名 | 内容 |
-|---|---|
-| `現在状況` | 最新の判定データ（実行のたびに全行上書き） |
-| `履歴_YYYY_MM` | 月別ログ（観測キーが変化した行のみ追記） |
-| `設定` | 対象地点の設定値 |
-| `エラーログ` | GAS 実行中のエラー記録 |
+- `現在状況` — 最新の判定データ。実行のたびに**全行上書き**（常に地点数分の行のみ）
+- `履歴_YYYY_MM` — 月別ログ。観測キー（`{area_code}_{yyyyMMddHHmm}`）が前回から変化した行のみ追記
+- `設定` — 対象地点の設定値（`initializeSheets()` で自動生成）
+- `エラーログ` — GAS 実行中の例外を記録
 
-**主要列（`CURRENT_HEADERS`）**: 更新日時、観測時刻、市町名、観測地点、前3日/前30日/当日降水量、平均/最小湿度、実効湿度、最大/最新10分/予報最大風速、乾燥・強風注意報フラグ、林野火災判定、火災警報判定、判定理由、10m/s・12m/s 連続回数、他（JSON 詳細列含む）
+主要列（`CURRENT_HEADERS`）: 更新日時、観測時刻、市町名、観測地点、前3日/前30日/当日降水量、平均/最小湿度、実効湿度、最大/最新10分/予報最大風速、乾燥・強風注意報フラグ、林野火災判定、火災警報判定、判定理由、10m/s・12m/s 連続回数、他（JSON 詳細列含む）
 
 ---
 
 ## GAS 主要関数
 
-| 関数 | 役割 |
-|---|---|
-| `collectWeatherData()` | メイン処理。10 分ごと自動実行 |
-| `doGet(e)` | Web API エンドポイント。`?action=current` でデータ返却 |
-| `initializeSheets()` | 初回セットアップ（シート作成・ヘッダー設定） |
-| `createTenMinuteTrigger()` | 10 分トリガーを登録 |
-| `fetchLast30Daily_(station)` | 過去 30 日分の日別気象データ（ETRN） |
-| `fetchAmedasToday_(amedasNo)` | 当日のアメダスリアルタイムデータ |
-| `parseWarnings_(data, areaCode)` | 警報・注意報 JSON のパース |
-| `parseTimelineWind_(data, areaCode)` | タイムライン風速予報のパース |
-| `forestJudge_(...)` | 林野火災判定 |
-| `fireWarningJudge_(...)` | 火災警報判定 |
-| `effectiveHumidity_(avgHums)` | 実効湿度の計算 |
-
----
-
-## Slack 通知
-
-`Code_Slack通知追加分.gs` を `Code.gs` 末尾に追記して使用。
-
-### セットアップ手順
-1. `CONFIG` オブジェクトに `SLACK_WEBHOOK_URL: 'https://hooks.slack.com/services/...'` を追加
-2. `collectWeatherData()` 内の `writeCurrent_(ss, rows);` の直後に `sendSlackIfVerdictChanged_(rows);` を追加
-
-### 動作仕様
-- 林野火災判定または火災警報判定が前回から変化した地点のみ通知
-- 初回実行時は記録のみ（通知しない）
-- 送信失敗時は次回実行時に再試行（前回値を更新しない）
-- Block Kit 形式でメッセージを構築
-
-### テスト用関数
-- `testSlackNotify()` — テスト通知を手動送信
-- `resetSlackVerdictProperties()` — 前回判定をリセット
+- **`collectWeatherData()`** — メイン処理。スクリプトロックで多重実行を防ぎ、全地点を順次処理する
+- **`doGet(e)`** — Web API。`?action=current` で `現在状況` シートの内容を JSON 返却。HTML はこれだけ叩く
+- **`fetchLast30Daily_(station)`** — ETRN から HTML をスクレイピングして日別データを取得。月をまたぐ場合は複数月分を並行取得する
+- **`fetchAmedasToday_(amedasNo)`** — アメダスの 3 時間ブロック JSON を当日分すべて取得し、時刻順に整列。未来・未公開ブロックのエラーは無視する設計
+- **`parseTimelineWind_(data, areaCode)`** — タイムライン API から未来の予報スロットのみ抽出し、最大風速と 3 時間別スロットを返す
+- **`fireWarningJudge_(...)`** — 基準②の除外条件チェックが基準①より後にある点に注意（基準①は除外条件の対象外）
+- **`effectiveHumiditySteps_(...)`** — 計算の中間ステップを配列で返す。HTML 側の「計算根拠」折りたたみ表示用
 
 ---
 
 ## 初回デプロイ手順
 
-1. Apps Script に `Code.gs` を貼り付け、末尾に `Code_Slack通知追加分.gs` の内容を追記
+### 基本セットアップ（必須）
+
+1. Apps Script に `Code.gs` を貼り付ける
 2. `CONFIG.SPREADSHEET_ID` にスプレッドシートの ID を記入（空欄の場合はスクリプトに紐付いたシートを使用）
-3. `CONFIG.SLACK_WEBHOOK_URL` に Slack の Incoming Webhook URL を記入
-4. `initializeSheets()` を 1 回手動実行
-5. `createTenMinuteTrigger()` を 1 回手動実行
-6. `collectWeatherData()` を手動実行して動作確認
-7. デプロイ → 新しいデプロイ → ウェブアプリ → アクセス: **全員** で公開
-8. `index.html` の `GAS_API_URL` に発行された URL を設定
+3. `initializeSheets()` を 1 回手動実行
+4. `createTenMinuteTrigger()` を 1 回手動実行
+5. `collectWeatherData()` を手動実行して動作確認
+6. デプロイ → 新しいデプロイ → ウェブアプリ → アクセス: **全員** で公開
+7. `index.html` の `GAS_API_URL` に発行された URL を設定
+
+### Slack 通知の追加（任意）
+
+1. `Code_Slack通知追加分.gs` の内容を `Code.gs` の末尾に追記
+2. `CONFIG` オブジェクトに `SLACK_WEBHOOK_URL: 'https://hooks.slack.com/services/...'` を追加
+3. `collectWeatherData()` 内の `writeCurrent_(ss, rows);` の直後に `sendSlackIfVerdictChanged_(rows);` を追加
+4. `testSlackNotify()` を手動実行して疎通確認
+
+**Slack 通知の動作仕様**
+- 林野火災判定または火災警報判定が前回から変化した地点のみ通知（変化なしは送信しない）
+- 初回実行時は判定値を記録するだけで通知しない
+- 送信失敗時は前回値を更新せず、次回実行時に再試行
+- `resetSlackVerdictProperties()` で前回判定をリセット可能
 
 ---
 
 ## HTML ダッシュボード
 
-- GAS Web API（`?action=current`）から JSON を取得して描画（JMA に直接アクセスしない）
 - 2 セクション構成: **林野火災注意報・警報** / **火災警報**
-- 各地点パネルに判定結果・気象値・日別降水量グラフ・注意報警報タグを表示
-- 実効湿度の計算根拠、10 分風速履歴、3 時間別風速予報を折りたたみ表示
-- **判定シミュレーター**: 任意の気象値を入力して基準適否をリアルタイム確認
+- 各地点パネルに判定結果・気象値・日別降水量グラフ（前30日）・注意報警報タグを表示
+- 実効湿度の計算根拠、10 分風速履歴、3 時間別風速予報は折りたたみで表示
+- **判定シミュレーター**: 任意の気象値を入力して基準①②・除外条件の適否をリアルタイム確認
 
 ---
 
-## 注意事項
+## 開発上の注意
 
-- 本システムの判定は **気象条件の充足を示すもの** であり、実際の発令は消防長の判断による
-- アメダスデータは 10 分値を使用するため、観測から最大 20 分程度の遅延が発生する場合がある
-- GAS の無料枠では 1 日の URL フェッチ回数に上限があるため、対象地点を増やす際は注意が必要
+- **GAS の URL フェッチ上限**: 無料枠では 1 日あたりの外部 URL フェッチ回数に上限がある。対象地点を増やす場合（現在2地点）は消費量を事前に見積もること（1 地点あたり 1 回実行で約 5〜7 リクエスト）
+- **アメダスの遅延**: 10 分値の公開は観測から最大 20 分程度遅延する場合がある
+- **ETRN のスクレイピング**: HTML 構造が変更された場合は `parseETRN_()` の正規表現が壊れる可能性がある
