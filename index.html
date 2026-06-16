@@ -308,7 +308,8 @@
 
     /* ===== サマリーボックス群 ===== */
     .stat-row {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 10px;
       margin-top: 18px;
     }
@@ -672,7 +673,6 @@
       margin-left: auto;
       font-size: 14px;
       font-weight: 800;
-      font-family: monospace;
       letter-spacing: .02em;
     }
 
@@ -769,7 +769,265 @@
       border-top: 1px solid var(--border);
       background: #12161f;
       font-size: 12px;
+      line-height: 1.7;
+    }
+
+    /* ===== 判定サマリー ===== */
+    .status-board {
+      background: #111827;
+      border: 2px solid var(--accent);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 22px;
+      animation: fadeInUp .4s ease both;
+    }
+
+    .status-board.alert {
+      background: #2a0a0a;
+      border-color: var(--warn);
+    }
+
+    .status-board.caution {
+      background: #1c1400;
+      border-color: var(--chui);
+    }
+
+    .status-board-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .status-board-title {
+      font-size: 18px;
+      font-weight: 900;
+    }
+
+    .status-board-time {
+      font-size: 11px;
+      color: var(--muted);
       font-family: monospace;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .status-group {
+      background: #141a28;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .status-group.forest {
+      border-top: 4px solid #22c55e;
+    }
+
+    .status-group.fire {
+      border-top: 4px solid #f97316;
+    }
+
+    .status-group-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      padding: 13px 14px 11px;
+      background: #101725;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .status-group-title {
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1.2;
+    }
+
+    .status-group.forest .status-group-title {
+      color: #4ade80;
+    }
+
+    .status-group.fire .status-group-title {
+      color: #fdba74;
+    }
+
+    .status-group-summary {
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .status-group-body {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .status-cell {
+      background: #151b29;
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--muted);
+      border-radius: 8px;
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .status-cell.ok {
+      border-left-color: #22c55e;
+    }
+
+    .status-cell.caution {
+      border-left-color: var(--chui);
+      background: #221a08;
+    }
+
+    .status-cell.alert {
+      border-left-color: var(--warn);
+      background: #2a1010;
+    }
+
+    .status-cell-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .status-area {
+      font-size: 16px;
+      color: var(--text);
+      font-weight: 900;
+      letter-spacing: .02em;
+    }
+
+    .status-kind {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .status-result {
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .status-reason {
+      margin-top: 6px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .status-note {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .season-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: #fde68a;
+      background: #2d2000;
+      border: 1px solid #78350f;
+      border-radius: 4px;
+      padding: 1px 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+
+    /* ===== 火災警報 要点表示 ===== */
+    .fire-brief {
+      background: #151b29;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 0;
+    }
+
+    .fire-brief.alert {
+      background: #2a1010;
+      border-color: var(--warn);
+    }
+
+    .fire-brief-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .fire-metric {
+      background: #1a1f2e;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 10px;
+      min-width: 0;
+    }
+
+    .fire-metric.hit {
+      border-color: #f9731680;
+      background: #2a1608;
+    }
+
+    .fire-metric-label {
+      color: var(--sub);
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .fire-metric-value {
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 900;
+      font-family: monospace;
+      white-space: nowrap;
+    }
+
+    .fire-checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .fire-check {
+      border-radius: 7px;
+      background: #0f1320;
+      border-left: 4px solid var(--muted);
+      padding: 8px 10px;
+      color: var(--sub);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .fire-check.hit {
+      border-left-color: var(--warn);
+      color: #fca5a5;
+    }
+
+    .fire-check.safe {
+      border-left-color: #22c55e;
+    }
+
+    .fire-detail {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
     }
 
     /* ===== 判定シミュレーター ===== */
@@ -915,6 +1173,44 @@
     .sim-flag-excl { color: var(--chui); }
 
     @media (max-width: 600px) {
+      body {
+        padding: 18px 12px;
+      }
+
+      .header {
+        align-items: stretch;
+      }
+
+      #refreshBtn {
+        width: 100%;
+      }
+
+      .status-grid,
+      .fire-brief-grid,
+      .fire-checks {
+        grid-template-columns: 1fr;
+      }
+
+      .status-group-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .stat-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .area-panel,
+      .area-panel-loading {
+        border-right: none;
+        border-top: 1px solid var(--border);
+        padding: 18px 16px;
+      }
+
+      .panel-area-header {
+        margin: -18px -16px 14px;
+      }
+
       .sim-row {
         grid-template-columns: 1fr 70px;
         grid-template-rows: auto auto;
@@ -1340,24 +1636,25 @@
       // 除外条件
       const excludeRain  = rainToday!=null&&rainToday>0;
       const excludeHumid = effHum!=null&&minHum!=null&&effHum>=70&&minHum>=50;
+      const windForJudge = Math.max(windMax ?? -Infinity, forecastMaxWind ?? -Infinity);
+      const kijun1Hit = effHum!=null && minHum!=null && effHum<=60 && minHum<=40 && windForJudge>=10;
+      const kijun2Raw = windForJudge>=12;
+      const kijun2Valid = kijun2Raw && !(excludeRain || excludeHumid);
       const exclRowStyle = hit => `display:grid;grid-template-columns:1fr auto;align-items:center;background:#1a1f2e;border-radius:5px;padding:5px 10px;border-left:3px solid ${hit?'#22c55e':'#ef4444'};`;
       const exclChip = hit => hit
         ? `<span style="font-size:10px;font-weight:700;color:#22c55e;font-family:monospace;">✓ 該当（発令対象外）</span>`
         : `<span style="font-size:10px;font-weight:700;color:#ef4444;font-family:monospace;">✗ 非該当（発令対象）</span>`;
 
       const hourStr = obsTime ? obsTime.slice(0,2)+':00' : '—';
-
-      return `<div class="area-panel" id="panel-fire-${nm}" data-reached="${reached}">
-        <div class="panel-area-header" style="border-left:4px solid #f97316;">
-          <div>
-            <div class="panel-area-name">${name}</div>
-            ${note?`<div style="font-size:10px;color:var(--muted);font-family:monospace;margin-top:1px;">${note}</div>`:''}
-          </div>
-          ${verdictBadgeHtml}
-        </div>
-        <div class="warn-list" style="border-color:${fcol};margin-top:0;">
-          ${streakBanner}
-          <div style="margin:8px 0 4px;display:grid;grid-template-columns:1fr;gap:5px;">
+      const fireDetailId = `fire-detail-${nm}`;
+      const metric = (label, value, hit) => `<div class="fire-metric ${hit?'hit':''}">
+        <div class="fire-metric-label">${label}</div>
+        <div class="fire-metric-value">${value}</div>
+      </div>`;
+      const excludeSummary = excludeRain || excludeHumid
+        ? `${excludeRain?'降雨あり':''}${excludeRain&&excludeHumid?'・':''}${excludeHumid?'湿度条件該当':''}`
+        : '除外条件なし';
+      const detailRows = `
             <!-- 実効湿度 -->
             <div style="display:grid;grid-template-columns:9em 1fr;align-items:start;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
               <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">🌫 実効湿度</span>
@@ -1381,17 +1678,47 @@
               <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">${fmt(windMax,'m/s')}${windBadge}</span>
               <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">1時間値最大 ${fmt(windMax,'m/s')} ／ 最新10分値 ${fmt(wind10m,'m/s')} → 大きい方を判定に使用（観測地点：${note}）</span>
             </div>
-            <!-- 最新風速（10分履歴） -->
             ${wind10Row}
-            <!-- 風速予報 -->
             ${forecastRow}
             <!-- 当日降水 -->
             <div style="display:grid;grid-template-columns:9em 1fr;align-items:center;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
               <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">🌧 当日降水</span>
               <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">${fmt(rainToday,'mm')}${rainBadge}</span>
               <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">当日0:00〜${hourStr}の累積（前1時間降水量の合計。直前の端数時間は含まず）</span>
+            </div>`;
+
+      return `<div class="area-panel" id="panel-fire-${nm}" data-reached="${reached}">
+        <div class="panel-area-header" style="border-left:4px solid #f97316;">
+          <div>
+            <div class="panel-area-name">${name}</div>
+            ${note?`<div style="font-size:10px;color:var(--muted);font-family:monospace;margin-top:1px;">${note}</div>`:''}
+          </div>
+          ${verdictBadgeHtml}
+        </div>
+        <div class="fire-brief ${reached?'alert':''}">
+          ${streakBanner}
+          <div class="fire-brief-grid">
+            ${metric('実効湿度', fmt(effHum,'%'), effHum!=null&&effHum<=60)}
+            ${metric('最小湿度', fmt(minHum,'%'), minHum!=null&&minHum<=40)}
+            ${metric('最大風速', fmt(windForJudge===-Infinity?null:windForJudge,'m/s'), windForJudge>=10)}
+          </div>
+          <div class="fire-checks">
+            <div class="fire-check ${kijun1Hit?'hit':'safe'}">
+              <strong>基準①</strong><br>${kijun1Hit?'該当':'未到達'}：湿度2条件 + 風速10m/s以上
+            </div>
+            <div class="fire-check ${kijun2Valid?'hit':(kijun2Raw?'':'safe')}">
+              <strong>基準②</strong><br>${kijun2Valid?'該当':kijun2Raw?'除外後は非該当':'未到達'}：風速12m/s以上
             </div>
           </div>
+          <div style="margin-top:8px;color:var(--sub);font-size:12px;line-height:1.6;">
+            除外条件：<strong style="color:${excludeRain||excludeHumid?'var(--chui)':'#22c55e'};">${excludeSummary}</strong>
+            <span style="color:${status==='正常'?'#22c55e':'var(--chui)'};margin-left:8px;">${status==='正常'?'● 取得正常':'△ 一部取得失敗'}</span>
+          </div>
+          <button class="toggle-btn" id="btn-${fireDetailId}" onclick="toggleSubDetail('${fireDetailId}')">▼ 詳細・計算根拠を開く</button>
+          <div class="fire-detail" id="${fireDetailId}" style="display:none;">
+            <div style="display:grid;grid-template-columns:1fr;gap:5px;">
+              ${detailRows}
+            </div>
           <!-- 除外条件チェック -->
           <div style="margin:8px 0 4px;padding:10px 12px;background:#0f1320;border:1.5px solid #334155;border-radius:8px;">
             <div style="font-size:11px;color:#AEB7C2;font-family:monospace;margin-bottom:7px;font-weight:700;">🚫 除外条件チェック（基準②のみ適用。いずれか該当で基準②は発令対象外）</div>
@@ -1411,6 +1738,7 @@
             <span style="color:${status==='正常'?'#22c55e':'var(--chui)'};">${status==='正常'?'● リアルタイム実況':'△ 一部取得失敗'}</span>　
             🕐 取得時刻：<strong style="color:var(--text);">${updatedAt}</strong>現在
             ${diag?`<div style="margin-top:2px;color:var(--muted);font-size:10px;word-break:break-all;">🔧 診断: ${diag}</div>`:''}
+          </div>
           </div>
           <div style="margin-top:6px;font-size:11px;font-family:monospace;${reached?'color:var(--warn);font-weight:700;':'color:var(--muted);'}">⚠ 発令には消防長の判断が必要です（本判定は気象条件の充足を示すものです）</div>
         </div>
@@ -1637,8 +1965,6 @@
       const isAlert = hasForestWarn || hasFireReached;
       const isChui  = !isAlert && hasForestChui;
 
-      const bgColor     = isAlert ? '#2a0a0a' : isChui ? '#1c1400' : '#0e1525';
-      const borderColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : 'var(--accent)';
       const statusIcon  = isAlert ? '🔴' : isChui ? '🟡' : '🟢';
       const statusLabel = isAlert ? '警戒が必要な状況です' : isChui ? '注意が必要な状況です' : '現在、発令基準には達していません';
       const statusColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : 'var(--accent)';
@@ -1646,39 +1972,82 @@
       const month = new Date().getMonth() + 1;
       const isForestOffSeason = month < 1 || month > 5;
       const forestOffBadge = isForestOffSeason
-        ? `<span style="font-size:10px;font-weight:600;color:#fde68a;background:#2d2000;border:1px solid #78350f;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle;">参考</span>`
+        ? `<span class="season-badge">参考</span>`
         : '';
 
-      const forestRows = rows.map(r => {
-        const v = r['林野火災判定'] || '—';
-        const col = v === '警報' ? 'var(--warn)' : v === '注意報' ? 'var(--chui)' : 'var(--muted)';
-        return `<span><span style="color:var(--sub);">${r['市町名']}</span>：<span style="color:${col};font-weight:700;">${v}</span></span>`;
-      }).join('<span style="color:var(--border);padding:0 8px;">|</span>');
+      const shorten = text => {
+        const s = String(text || '').trim();
+        return s.length > 54 ? s.slice(0, 54) + '...' : s;
+      };
 
-      const fireRows = rows.map(r => {
+      const forestCell = r => {
+        const v = r['林野火災判定'] || '—';
+        const cls = v === '警報' ? 'alert' : v === '注意報' ? 'caution' : 'ok';
+        const color = v === '警報' ? 'var(--warn)' : v === '注意報' ? 'var(--chui)' : '#22c55e';
+        const reason = [
+          `前3日 ${Number(r['前3日降水量mm']||0).toFixed(1)}mm`,
+          `前30日 ${Number(r['前30日降水量mm']||0).toFixed(1)}mm`,
+          `乾燥 ${r['乾燥注意報']||'—'}`,
+          `強風 ${r['強風注意報']||'—'}`
+        ].join(' / ');
+        return `<div class="status-cell ${cls}">
+          <div class="status-cell-head">
+            <span class="status-area">${r['市町名']}</span>
+            <span class="status-kind">${r['観測地点']||''}</span>
+          </div>
+          <div class="status-result" style="color:${color};">${v}</div>
+          <div class="status-reason">${reason}</div>
+        </div>`;
+      };
+
+      const fireCell = r => {
         const v = r['火災警報判定'] || '—';
         const reached = v === '基準到達';
-        const col   = reached ? 'var(--warn)' : 'var(--muted)';
+        const cls = reached ? 'alert' : v === '判定不可' ? '' : 'ok';
+        const color = reached ? 'var(--warn)' : v === '判定不可' ? 'var(--muted)' : '#22c55e';
         const label = reached ? '発令条件を充足' : v === '基準未到達' ? '条件未充足' : v;
-        return `<span><span style="color:var(--sub);">${r['市町名']}</span>：<span style="color:${col};font-weight:700;">${label}</span></span>`;
-      }).join('<span style="color:var(--border);padding:0 8px;">|</span>');
+        const reason = shorten(r['判定理由']) || `実効湿度 ${r['実効湿度%']||'—'}% / 風速 ${r['最大風速m/s']||'—'}m/s`;
+        return `<div class="status-cell ${cls}">
+          <div class="status-cell-head">
+            <span class="status-area">${r['市町名']}</span>
+            <span class="status-kind">${r['取得状態']==='正常'?'取得正常':(r['取得状態']||'')}</span>
+          </div>
+          <div class="status-result" style="color:${color};">${label}</div>
+          <div class="status-reason">${reason}</div>
+        </div>`;
+      };
 
-      const alertNote = (isAlert || isChui)
-        ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid ${borderColor};font-size:11px;color:var(--muted);font-family:monospace;">⚠ 発令には消防長の判断が必要です（本判定は気象条件の充足を示すものです）</div>`
-        : '';
+      const forestSummary = hasForestWarn ? '警報あり' : hasForestChui ? '注意報あり' : '発令なし';
+      const forestSummaryColor = hasForestWarn ? 'var(--warn)' : hasForestChui ? 'var(--chui)' : '#22c55e';
+      const fireSummary = hasFireReached ? '条件充足あり' : '条件未充足';
+      const fireSummaryColor = hasFireReached ? 'var(--warn)' : '#22c55e';
 
-      el.innerHTML = `<div style="background:${bgColor};border:2px solid ${borderColor};border-radius:12px;padding:16px 20px;margin-bottom:22px;animation:fadeInUp .4s ease both;">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-          <span style="font-size:17px;font-weight:900;color:${statusColor};">${statusIcon}&ensp;${statusLabel}</span>
-          <span style="font-size:11px;color:var(--muted);font-family:monospace;">🕐 最終取得 ${updatedStr}</span>
+      el.innerHTML = `<div class="status-board ${isAlert?'alert':isChui?'caution':''}">
+        <div class="status-board-head">
+          <span class="status-board-title" style="color:${statusColor};">${statusIcon}&ensp;${statusLabel}</span>
+          <span class="status-board-time">🕐 最終取得 ${updatedStr}</span>
         </div>
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:center;font-family:monospace;font-size:13px;">
-          <span style="color:var(--sub);white-space:nowrap;font-weight:700;">🌲 林野火災${forestOffBadge}</span>
-          <span style="display:flex;flex-wrap:wrap;gap:10px;">${forestRows}</span>
-          <span style="color:var(--sub);white-space:nowrap;font-weight:700;">🔥 火災警報</span>
-          <span style="display:flex;flex-wrap:wrap;gap:10px;">${fireRows}</span>
+        <div class="status-grid">
+          <section class="status-group forest">
+            <div class="status-group-head">
+              <span class="status-group-title">🌲 林野火災注意報・警報${forestOffBadge}</span>
+              <span class="status-group-summary" style="color:${forestSummaryColor};">${forestSummary}</span>
+            </div>
+            <div class="status-group-body">
+              ${rows.map(forestCell).join('')}
+            </div>
+          </section>
+          <section class="status-group fire">
+            <div class="status-group-head">
+              <span class="status-group-title">🔥 火災警報</span>
+              <span class="status-group-summary" style="color:${fireSummaryColor};">${fireSummary}</span>
+            </div>
+            <div class="status-group-body">
+              ${rows.map(fireCell).join('')}
+            </div>
+          </section>
         </div>
-        ${alertNote}
+        <div class="status-note">⚠ 発令には消防長の判断が必要です。本判定は気象条件の充足を示すものです。</div>
       </div>`;
     }
 
