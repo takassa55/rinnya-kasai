@@ -1637,11 +1637,17 @@
       const isAlert = hasForestWarn || hasFireReached;
       const isChui  = !isAlert && hasForestChui;
 
-      const bgColor     = isAlert ? '#2a0a0a' : isChui ? '#1c1400' : '#0d1a10';
-      const borderColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : '#16a34a';
+      const bgColor     = isAlert ? '#2a0a0a' : isChui ? '#1c1400' : '#0e1525';
+      const borderColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : 'var(--accent)';
       const statusIcon  = isAlert ? '🔴' : isChui ? '🟡' : '🟢';
       const statusLabel = isAlert ? '警戒が必要な状況です' : isChui ? '注意が必要な状況です' : '現在、発令基準には達していません';
-      const statusColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : '#22c55e';
+      const statusColor = isAlert ? 'var(--warn)' : isChui ? 'var(--chui)' : 'var(--accent)';
+
+      const month = new Date().getMonth() + 1;
+      const isForestOffSeason = month < 1 || month > 5;
+      const forestOffBadge = isForestOffSeason
+        ? `<span style="font-size:10px;font-weight:600;color:#fde68a;background:#2d2000;border:1px solid #78350f;border-radius:3px;padding:1px 5px;margin-left:6px;vertical-align:middle;">参考</span>`
+        : '';
 
       const forestRows = rows.map(r => {
         const v = r['林野火災判定'] || '—';
@@ -1667,7 +1673,7 @@
           <span style="font-size:11px;color:var(--muted);font-family:monospace;">🕐 最終取得 ${updatedStr}</span>
         </div>
         <div style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:center;font-family:monospace;font-size:13px;">
-          <span style="color:var(--sub);white-space:nowrap;font-weight:700;">🌲 林野火災</span>
+          <span style="color:var(--sub);white-space:nowrap;font-weight:700;">🌲 林野火災${forestOffBadge}</span>
           <span style="display:flex;flex-wrap:wrap;gap:10px;">${forestRows}</span>
           <span style="color:var(--sub);white-space:nowrap;font-weight:700;">🔥 火災警報</span>
           <span style="display:flex;flex-wrap:wrap;gap:10px;">${fireRows}</span>
