@@ -1345,12 +1345,12 @@
               <span class="sim-threshold">基準①：≤40%</span>
             </div>
             <div class="sim-row">
-              <label class="sim-label">💨 実況風速 (m/s)</label>
+              <label class="sim-label">💨 最新10分風速 (m/s)</label>
               <input class="sim-input" id="simWind" type="number" value="11" min="0" max="50" step="0.1" oninput="runSim()">
-              <span class="sim-threshold">基準①：≥10 / 基準②：≥12</span>
+              <span class="sim-threshold">現況判定に使用。基準①：≥10 / 基準②：≥12</span>
             </div>
             <div class="sim-row">
-              <label class="sim-label">🔭 予報風速 (m/s)</label>
+              <label class="sim-label">🔭 3時間別予報最大 (m/s)</label>
               <input class="sim-input" id="simFcWind" type="number" value="0" min="0" max="50" step="1" oninput="runSim()">
               <span class="sim-threshold">実況と OR で判定（0=予報なし）</span>
             </div>
@@ -1605,6 +1605,14 @@
       const effSteps         = safeJSON(r['effStepsJSON'], []);
       const forecastSlots    = safeJSON(r['forecastSlotsJSON'], []);
       const forecastMaxWind  = nv(r['予報最大風速m/s']);
+      const forecastSlotMaxWind = forecastSlots.reduce((max, s) => {
+        const wind = nv(s && s.wind);
+        return wind == null ? max : Math.max(max, wind);
+      }, -Infinity);
+      const forecastJudgeWind = Math.max(
+        forecastMaxWind ?? -Infinity,
+        forecastSlotMaxWind
+      );
       const forecastReportDt = r['予報最大発表時刻'] || '';
 
       const cfg = STATIONS[name] || {};
@@ -1613,8 +1621,8 @@
       const badge = (label, color) => `<span style="margin-left:6px;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700;background:${color}20;border:1px solid ${color};color:${color};font-family:monospace;">${label}</span>`;
       const effBadge  = effHum !=null&&effHum <=60 ? badge('基準①','#f97316') : '';
       const minBadge  = minHum !=null&&minHum <=40 ? badge('基準①','#f97316') : '';
-      const windBadge = windMax!=null&&windMax>=12  ? badge('基準②','#ef4444')+badge('基準①','#f97316')
-                      : windMax!=null&&windMax>=10  ? badge('基準①','#f97316') : '';
+      const windBadge = windMax!=null&&windMax>=12  ? badge('参考 基準②','#ef4444')+badge('参考 基準①','#f97316')
+                      : windMax!=null&&windMax>=10  ? badge('参考 基準①','#f97316') : '';
       const rainBadge = rainToday!=null&&rainToday>0 ? badge('除外条件（降雨）','#64748b') : '';
 
       const verdictBadgeHtml = reached
@@ -1631,12 +1639,12 @@
       const wind10Row = buildWind10Row(nm, wind10m, obsTime, wind10minHistory, cfg.amedas_name||'');
 
       // 予報スロット行（折りたたみ）
-      const forecastRow = buildForecastRow(nm, forecastMaxWind, forecastReportDt, forecastSlots);
+      const forecastRow = buildForecastRow(nm, forecastJudgeWind===-Infinity?null:forecastJudgeWind, forecastReportDt, forecastSlots);
 
       // 除外条件
       const excludeRain  = rainToday!=null&&rainToday>0;
       const excludeHumid = effHum!=null&&minHum!=null&&effHum>=70&&minHum>=50;
-      const windForJudge = Math.max(windMax ?? -Infinity, forecastMaxWind ?? -Infinity);
+      const windForJudge = Math.max(wind10m ?? -Infinity, forecastJudgeWind);
       const kijun1Hit = effHum!=null && minHum!=null && effHum<=60 && minHum<=40 && windForJudge>=10;
       const kijun2Raw = windForJudge>=12;
       const kijun2Valid = kijun2Raw && !(excludeRain || excludeHumid);
@@ -1676,7 +1684,7 @@
             <div style="display:grid;grid-template-columns:9em 1fr;align-items:center;background:#1a1f2e;border-radius:6px;padding:6px 10px;gap:2px 4px;">
               <span style="color:#e2e8f0;font-size:12px;font-weight:700;font-family:monospace;">💨 最大風速</span>
               <span style="color:var(--text);font-size:14px;font-weight:800;font-family:monospace;display:flex;flex-wrap:wrap;align-items:center;gap:4px;">${fmt(windMax,'m/s')}${windBadge}</span>
-              <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">1時間値最大 ${fmt(windMax,'m/s')} ／ 最新10分値 ${fmt(wind10m,'m/s')} → 大きい方を判定に使用（観測地点：${note}）</span>
+              <span style="color:#AEB7C2;font-size:10px;grid-column:1/-1;">当日の1時間値最大と最新10分値 ${fmt(wind10m,'m/s')} の大きい方。過去到達の参考値で、火災警報の現況判定には最新10分風速を使用（観測地点：${note}）</span>
             </div>
             ${wind10Row}
             ${forecastRow}
@@ -1700,7 +1708,8 @@
           <div class="fire-brief-grid">
             ${metric('実効湿度', fmt(effHum,'%'), effHum!=null&&effHum<=60)}
             ${metric('最小湿度', fmt(minHum,'%'), minHum!=null&&minHum<=40)}
-            ${metric('最大風速', fmt(windForJudge===-Infinity?null:windForJudge,'m/s'), windForJudge>=10)}
+            ${metric('最新10分風速', fmt(wind10m,'m/s'), wind10m!=null&&wind10m>=10)}
+            ${metric('風速予報の最大風速', fmt(forecastJudgeWind===-Infinity?null:forecastJudgeWind,'m/s'), forecastJudgeWind>=10)}
           </div>
           <div class="fire-checks">
             <div class="fire-check ${kijun1Hit?'hit':'safe'}">
@@ -1713,6 +1722,9 @@
           <div style="margin-top:8px;color:var(--sub);font-size:12px;line-height:1.6;">
             除外条件：<strong style="color:${excludeRain||excludeHumid?'var(--chui)':'#22c55e'};">${excludeSummary}</strong>
             <span style="color:${status==='正常'?'#22c55e':'var(--chui)'};margin-left:8px;">${status==='正常'?'● 取得正常':'△ 一部取得失敗'}</span>
+          </div>
+          <div style="margin-top:4px;color:var(--muted);font-size:11px;line-height:1.6;font-family:monospace;">
+            ※ 「現に風速10m/s以上」は最新10分風速で判定します。最大風速は当日の過去到達状況の参考値です。予想条件は3時間別予報の最大風速で判定します。
           </div>
           <button class="toggle-btn" id="btn-${fireDetailId}" onclick="toggleSubDetail('${fireDetailId}')">▼ 詳細・計算根拠を開く</button>
           <div class="fire-detail" id="${fireDetailId}" style="display:none;">
@@ -1919,7 +1931,7 @@
             ${name}　<span style="color:${statusColor};font-weight:700;">${statusText}</span>　<span style="color:var(--muted);font-weight:400;">🕐 ${r['更新日時']||''}</span>
           </div>
           <div style="line-height:2;font-size:11px;">
-            📊 実効湿度・最小湿度・最大風速：<a href="${amedasUrl}" target="_blank" style="color:var(--accent);text-decoration:none;">気象庁アメダス ${cfg.amedas_name} ↗</a><br>
+            📊 実効湿度・最小湿度・風速実況：<a href="${amedasUrl}" target="_blank" style="color:var(--accent);text-decoration:none;">気象庁アメダス ${cfg.amedas_name} ↗</a><br>
             📊 当日降水：<a href="${etrnUrl}" target="_blank" style="color:#22c55e;text-decoration:none;">気象庁ETRN（降水量確認）↗</a><span style="color:var(--muted);font-size:10px;">　※アメダス1時間値累積を判定に使用</span><br>
             📊 風速予報テキスト：<a href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=210000" target="_blank" style="color:var(--accent);text-decoration:none;">気象庁 岐阜県府県天気予報 ↗</a><br>
             📊 3時間別最大風速予報：<a href="${windRef}" target="_blank" style="color:#4ade80;text-decoration:none;">3時間別風速数値はこちらで確認 ↗</a>
@@ -2006,7 +2018,7 @@
         const cls = reached ? 'alert' : v === '判定不可' ? '' : 'ok';
         const color = reached ? 'var(--warn)' : v === '判定不可' ? 'var(--muted)' : '#22c55e';
         const label = reached ? '発令条件を充足' : v === '基準未到達' ? '条件未充足' : v;
-        const reason = shorten(r['判定理由']) || `実効湿度 ${r['実効湿度%']||'—'}% / 風速 ${r['最大風速m/s']||'—'}m/s`;
+        const reason = shorten(r['判定理由']) || `実効湿度 ${r['実効湿度%']||'—'}% / 最新10分風速 ${r['最新10分風速m/s']||'—'}m/s`;
         return `<div class="status-cell ${cls}">
           <div class="status-cell-head">
             <span class="status-area">${r['市町名']}</span>
